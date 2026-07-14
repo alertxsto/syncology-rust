@@ -47,7 +47,28 @@ jobs:
       - name: Patch app version in manifests
         shell: pwsh
         run: |
-          node -e "const fs=require('fs'); const v=process.env.APP_VERSION; const pj='package.json'; const tc='src-tauri/tauri.conf.json'; const ct='src-tauri/Cargo.toml'; const p=JSON.parse(fs.readFileSync(pj,'utf8')); p.version=v; fs.writeFileSync(pj, JSON.stringify(p,null,2)+'\\n'); const t=JSON.parse(fs.readFileSync(tc,'utf8')); t.version=v; fs.writeFileSync(tc, JSON.stringify(t,null,2)+'\\n'); let c=fs.readFileSync(ct,'utf8'); c=c.replace(/^version\s*=\s*\"[^\"]+\"/m, 'version = \"'+v+'\"'); fs.writeFileSync(ct,c);"
+          $v = "$env:APP_VERSION"
+
+          # package.json
+          $pkg = Get-Content "package.json" -Raw | ConvertFrom-Json
+          $pkg.version = $v
+          $pkg | ConvertTo-Json -Depth 20 | Out-File -FilePath "package.json" -Encoding utf8
+
+          # tauri.conf.json
+          $tauri = Get-Content "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $tauri.version = $v
+          $tauri | ConvertTo-Json -Depth 20 | Out-File -FilePath "src-tauri/tauri.conf.json" -Encoding utf8
+
+          # Cargo.toml (replace first package version line only)
+          $lines = Get-Content "src-tauri/Cargo.toml"
+          $replaced = $false
+          for ($i = 0; $i -lt $lines.Length; $i++) {
+            if (-not $replaced -and $lines[$i] -match '^version\s*=\s*".*"\s*$') {
+              $lines[$i] = "version = \"$v\""
+              $replaced = $true
+            }
+          }
+          $lines | Set-Content "src-tauri/Cargo.toml"
 
       - name: Build Tauri app (Windows)
         env:
