@@ -134,6 +134,7 @@ jobs:
             Version: `${{ env.APP_VERSION }}`
           artifacts: |
             src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/nsis/*.nsis.zip
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/*.exe
             src-tauri/target/release/bundle/**/*.sig
@@ -145,6 +146,7 @@ jobs:
         with:
           files: |
             src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/nsis/*.nsis.zip
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/*.exe
             src-tauri/target/release/bundle/**/*.sig
