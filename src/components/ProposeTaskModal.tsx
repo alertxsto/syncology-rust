@@ -10,11 +10,16 @@ interface ProposeTaskModalProps {
 }
 
 const DIFFICULTIES = ["Easy", "Medium", "Hard", "Very Hard"];
+const CATEGORIES = [
+  { value: "technical", label: "Technical" },
+  { value: "management", label: "Management" },
+];
 
 export default function ProposeTaskModal({ roomId, members, onClose, onSuccess }: ProposeTaskModalProps) {
   const [title, setTitle]           = useState("");
   const [description, setDesc]      = useState("");
   const [difficulty, setDifficulty] = useState("Medium");
+  const [category, setCategory]     = useState("technical");
   const [assignedTo, setAssignedTo] = useState("");
   const [deadline, setDeadline]     = useState(new Date().toISOString().substring(0, 10));
   const [loading, setLoading]       = useState(false);
@@ -31,6 +36,7 @@ export default function ProposeTaskModal({ roomId, members, onClose, onSuccess }
         description: description.trim(),
         assignedToId: assignedTo,
         difficulty,
+        category,
         internalDeadline: deadline,
         roomId,
       });
@@ -102,6 +108,16 @@ export default function ProposeTaskModal({ roomId, members, onClose, onSuccess }
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Category */}
+          <div className="form-field">
+            <label className="form-label">Kategori</label>
+            <select className="form-input" value={category} onChange={e => setCategory(e.target.value)}>
+              {CATEGORIES.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Deadline */}

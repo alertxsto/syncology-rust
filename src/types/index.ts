@@ -130,8 +130,11 @@ export type EventType =
   | "task_approved"
   | "task_rejected"
   | "task_rescued"
+  | "task_updated"
+  | "task_deleted"
   | "evidence_submitted"
   | "nudge_sent"
+  | "kudos_sent"
   | "backup_called";
 
 export interface ActivityEvent {

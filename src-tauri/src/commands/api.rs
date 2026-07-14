@@ -185,11 +185,27 @@ pub async fn add_task(
     description: String,
     assigned_to_id: String,
     difficulty: String,
+    category: Option<String>,
     internal_deadline: String,
     room_id: Option<String>,
     db: State<'_, Arc<Database>>,
 ) -> Result<String, String> {
-    db.room.add_task(&title, &description, &assigned_to_id, &difficulty, &internal_deadline, room_id).await
+    let current_uid = {
+        let lock = db.auth.user.lock().await;
+        lock.as_ref().map(|u| u.uid.clone()).unwrap_or_default()
+    };
+    db.room
+        .add_task(
+            &title,
+            &description,
+            &assigned_to_id,
+            &difficulty,
+            category.as_deref(),
+            &internal_deadline,
+            room_id,
+            &current_uid,
+        )
+        .await
 }
 
 #[tauri::command]
@@ -199,7 +215,11 @@ pub async fn update_task(
     room_id: Option<String>,
     db: State<'_, Arc<Database>>,
 ) -> Result<(), String> {
-    db.room.update_task(&task_id, &data, room_id).await
+    let current_uid = {
+        let lock = db.auth.user.lock().await;
+        lock.as_ref().map(|u| u.uid.clone()).unwrap_or_default()
+    };
+    db.room.update_task(&task_id, &data, room_id, &current_uid).await
 }
 
 #[tauri::command]
@@ -208,7 +228,11 @@ pub async fn delete_task(
     room_id: Option<String>,
     db: State<'_, Arc<Database>>,
 ) -> Result<(), String> {
-    db.room.delete_task(&task_id, room_id).await
+    let current_uid = {
+        let lock = db.auth.user.lock().await;
+        lock.as_ref().map(|u| u.uid.clone()).unwrap_or_default()
+    };
+    db.room.delete_task(&task_id, room_id, &current_uid).await
 }
 
 #[tauri::command]

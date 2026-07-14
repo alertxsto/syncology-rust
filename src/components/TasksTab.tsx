@@ -49,6 +49,7 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
       let leader = false;
       fetchedMembers.forEach(m => {
         memberMap[m.uid] = m;
+        memberMap[m.id] = m; // allow lookups by member doc ID (e.g. proposed_by_id)
         if (m.uid === currentUser.uid && m.role === "leader") leader = true;
       });
 

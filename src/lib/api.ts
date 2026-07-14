@@ -84,6 +84,7 @@ export const taskApi = {
     description: string;
     assignedToId: string;
     difficulty: TaskDifficulty;
+    category?: "technical" | "management";
     internalDeadline: string;
     roomId: string;
   }) =>

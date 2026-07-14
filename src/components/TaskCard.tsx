@@ -59,6 +59,7 @@ export default function TaskCard({
   const esc        = ESC[escLevel] || ESC[0];
   const statusInfo = STATUS[task.status] || { label: task.status, color: "var(--text-3)" };
   const assignee   = members[task.assigned_to_id];
+  const reviewer   = task.assigned_reviewer_id ? members[task.assigned_reviewer_id] : undefined;
   const isAssignee = task.assigned_to_id === currentUser.uid;
   const isReviewer = task.assigned_reviewer_id === currentUser.uid;
   const weight     = task.weight ?? DIFFICULTY_WEIGHT[task.difficulty] ?? 10;
@@ -172,6 +173,9 @@ export default function TaskCard({
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: diffColor, fontWeight: 700 }}>
             {task.difficulty || "Medium"} · {weight}pt
           </span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--text-3)" }}>
+            {task.category || "technical"}
+          </span>
           {task.is_rescue && (
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--green)", fontWeight: 700 }}>RESCUE +50%</span>
           )}
@@ -188,6 +192,12 @@ export default function TaskCard({
             </span>
           )}
         </div>
+
+        {task.status === "under_review" && (
+          <div style={{ fontSize: "11px", color: "var(--amber)", fontWeight: 600 }}>
+            Reviewer: {reviewer?.display_name || "Belum ditentukan"}
+          </div>
+        )}
 
         {/* Description */}
         {task.description && (

@@ -35,8 +35,11 @@ const EVENT_META: Record<EventType, { label: string; icon: React.ReactNode; colo
   task_approved:     { label: "Task disetujui",       icon: <FiCheckCircle />, color: "var(--green)" },
   task_rejected:     { label: "Task ditolak",         icon: <FiXCircle />, color: "var(--red)" },
   task_rescued:      { label: "Task di-rescue",       icon: <FiZap />, color: "var(--amber)" },
+  task_updated:      { label: "Task diupdate",        icon: <FiEdit3 />, color: "var(--accent-light)" },
+  task_deleted:      { label: "Task dihapus",         icon: <FiXCircle />, color: "var(--red)" },
   evidence_submitted:{ label: "Bukti dikirim",        icon: <FiPaperclip />, color: "var(--amber)" },
   nudge_sent:        { label: "Nudge terkirim",       icon: <FiBell />, color: "var(--purple)" },
+  kudos_sent:        { label: "Kudos diberikan",      icon: <FiZap />, color: "var(--green)" },
   backup_called:     { label: "Bantuan diminta",      icon: <FiAlertCircle />, color: "var(--red)" },
 };
 

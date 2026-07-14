@@ -224,8 +224,10 @@ impl RoomManager {
         description: &str,
         assigned_to_id: &str,
         difficulty: &str,
+        category: Option<&str>,
         internal_deadline: &str,
         room_id: Option<String>,
+        proposer_uid: &str,
     ) -> Result<String, String> {
         let rid = if let Some(r) = room_id { r } else { self.current_room_id.read().await.clone().unwrap_or_default() };
         if rid.is_empty() {
@@ -242,7 +244,8 @@ impl RoomManager {
         data.insert("proposed_by_id".to_string(), json!(proposed_by));
         data.insert("weight".to_string(), json!(weight));
         data.insert("difficulty".to_string(), json!(difficulty));
-        data.insert("category".to_string(), json!("technical"));
+        let category = category.unwrap_or("technical");
+        data.insert("category".to_string(), json!(category));
         data.insert("status".to_string(), json!("proposed"));
         data.insert("internal_deadline".to_string(), json!(if internal_deadline.is_empty() { Self::now_iso() } else { internal_deadline.to_string() }));
         data.insert("evidence_url".to_string(), json!(""));
@@ -260,30 +263,65 @@ impl RoomManager {
         let result = self.fb.add(&format!("rooms/{}/tasks", rid), &data).await.map_err(|e| e.to_string())?;
         let task_id = result.get("id").and_then(|i| i.as_str()).unwrap_or("").to_string();
 
-        let _ = self.log_event(&rid, &proposed_by, "task_proposed", json!({
+        let actor_uid = if proposer_uid.is_empty() { assigned_to_id } else { proposer_uid };
+        let _ = self.log_event(&rid, actor_uid, "task_proposed", json!({
             "task_id": task_id,
             "title": title,
             "difficulty": difficulty,
+            "category": category,
             "assigned_to_id": assigned_to_id,
         })).await;
 
         Ok(task_id)
     }
 
-    pub async fn update_task(&self, task_id: &str, data: &Map<String, Value>, room_id: Option<String>) -> Result<(), String> {
+    pub async fn update_task(&self, task_id: &str, data: &Map<String, Value>, room_id: Option<String>, actor_uid: &str) -> Result<(), String> {
         let rid = if let Some(r) = room_id { r } else { self.current_room_id.read().await.clone().unwrap_or_default() };
         if rid.is_empty() {
             return Err("No active room.".to_string());
         }
-        self.fb.update(&format!("rooms/{}/tasks/{}", rid, task_id), data).await.map_err(|e| e.to_string())
+
+        let path = format!("rooms/{}/tasks/{}", rid, task_id);
+        let before = self.fb.get(&path).await.map_err(|e| e.to_string())?.unwrap_or_default();
+        let before_status = before.get("status").and_then(|v| v.as_str()).unwrap_or("").to_string();
+
+        self.fb.update(&path, data).await.map_err(|e| e.to_string())?;
+
+        let after = self.fb.get(&path).await.map_err(|e| e.to_string())?.unwrap_or_default();
+        let after_status = after.get("status").and_then(|v| v.as_str()).unwrap_or("").to_string();
+
+        if before_status != after_status {
+            let _ = self.log_event(&rid, actor_uid, "task_updated", json!({
+                "task_id": task_id,
+                "from_status": before_status,
+                "to_status": after_status,
+                "title": after.get("title").and_then(|v| v.as_str()).unwrap_or(""),
+            })).await;
+        }
+
+        Ok(())
     }
 
-    pub async fn delete_task(&self, task_id: &str, room_id: Option<String>) -> Result<(), String> {
+    pub async fn delete_task(&self, task_id: &str, room_id: Option<String>, actor_uid: &str) -> Result<(), String> {
         let rid = if let Some(r) = room_id { r } else { self.current_room_id.read().await.clone().unwrap_or_default() };
         if rid.is_empty() {
             return Err("No active room.".to_string());
         }
-        self.fb.delete(&format!("rooms/{}/tasks/{}", rid, task_id)).await.map_err(|e| e.to_string())
+
+        let path = format!("rooms/{}/tasks/{}", rid, task_id);
+        let existing = self.fb.get(&path).await.map_err(|e| e.to_string())?.unwrap_or_default();
+        let title = existing.get("title").and_then(|v| v.as_str()).unwrap_or("");
+        let status = existing.get("status").and_then(|v| v.as_str()).unwrap_or("");
+
+        self.fb.delete(&path).await.map_err(|e| e.to_string())?;
+
+        let _ = self.log_event(&rid, actor_uid, "task_deleted", json!({
+            "task_id": task_id,
+            "title": title,
+            "status": status,
+        })).await;
+
+        Ok(())
     }
 
     pub async fn send_nudge_local(&self, room_id: &str, to_uid: &str, task_id: &str, from_uid: &str) -> Result<Value, String> {
