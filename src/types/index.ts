@@ -58,10 +58,15 @@ export const DIFFICULTY_WEIGHT: Record<TaskDifficulty, number> = {
   "Very Hard": 35,
 };
 
-export interface TaskEvidenceMeta {
-  github_url?: string;
-  image_urls?: string[];
+export type EvidenceType = "github_pr" | "github_commit" | "document" | "image" | "other_url";
+
+export interface TypedEvidenceMeta {
+  type: EvidenceType;
+  primary_url: string;
   notes?: string;
+  github_pr_num?: string;
+  github_commit_hash?: string;
+  image_urls?: string[];
 }
 
 export interface TaskSubtask {
@@ -70,6 +75,8 @@ export interface TaskSubtask {
   done: boolean;
   created_at: string;
   completed_at?: string;
+  assignee_uid?: string;
+  due_date?: string;
 }
 
 export interface Task {
@@ -84,7 +91,7 @@ export interface Task {
   status: TaskStatus;
   internal_deadline: string;     // ISO 8601
   evidence_url: string;
-  evidence_meta?: TaskEvidenceMeta;
+  evidence_meta?: TypedEvidenceMeta;
   approved_by_id: string;        // Firebase Auth UID
   rejection_reason: string;
   is_rescue: boolean;
@@ -95,10 +102,14 @@ export interface Task {
   escalation_level: EscalationLevel;
   escalated_at: string;
   assigned_reviewer_id: string;  // Firebase Auth UID
+  reviewer_backup_id?: string;   // Firebase Auth UID (backup reviewer)
+  review_due_at?: string;        // ISO 8601 deadline review
   backup_message?: string;       // present when escalation_level === 3
   // Optional — task dependencies (Phase 7)
   blocked_by?: string[];
   recurrence?: "none" | "daily" | "weekly" | "monthly";
+  kudos_by?: string[];
+  kudos_count?: number;
   subtasks?: TaskSubtask[];
 }
 
@@ -208,7 +219,7 @@ export type BadgeId =
 export type ToastType = "nudge" | "backup" | "info" | "success" | "error";
 
 export interface Toast {
-  id: number;
+  id: string;
   title: string;
   message: string;
   type: ToastType;

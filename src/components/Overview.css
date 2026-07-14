@@ -155,3 +155,85 @@
 
 .member-row { cursor: pointer; transition: background 120ms; }
 .member-row:hover { background: var(--bg-elevated); }
+
+/* Team Health Dashboard Styles */
+.health-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.health-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.health-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.health-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.health-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.health-item-name {
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.health-item-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.health-bar-track {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-base);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.health-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.health-bar-fill.normal {
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+}
+
+.health-bar-fill.high {
+  background: linear-gradient(90deg, var(--amber), var(--amber-light));
+}
+
+.health-bar-fill.overload {
+  background: linear-gradient(90deg, var(--red), var(--red-light));
+}
+
+.health-bar-fill.success {
+  background: linear-gradient(90deg, var(--green), var(--green-light));
+}

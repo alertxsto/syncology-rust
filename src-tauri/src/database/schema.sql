@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     kudos_count             INTEGER NOT NULL DEFAULT 0,
     recurrence              TEXT NOT NULL DEFAULT 'none',   -- 'none'|'daily'|'weekly'|'monthly'
     subtasks                JSONB NOT NULL DEFAULT '[]',    -- array of TaskSubtask objects
+    reviewer_backup_id      TEXT NOT NULL DEFAULT '',
+    review_due_at           TIMESTAMPTZ,
     proposed_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     submitted_at            TIMESTAMPTZ,
     approved_at             TIMESTAMPTZ,
@@ -180,3 +182,5 @@ ALTER TABLE typing_indicators DISABLE ROW LEVEL SECURITY;
 -- Migration script untuk menambahkan kolom yang kurang jika tabel tasks sudah ada sebelumnya
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence TEXT NOT NULL DEFAULT 'none';
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS subtasks JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reviewer_backup_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS review_due_at TIMESTAMPTZ;

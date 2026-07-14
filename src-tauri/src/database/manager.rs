@@ -412,7 +412,9 @@ impl RoomManager {
             .await
             .map_err(|e| e.to_string())?;
 
-        let reviewer_uid = self.pick_reviewer(&members, &assignee_uid);
+        let (reviewer_uid, backup_uid) = self.pick_reviewers(&members, &assignee_uid);
+        let review_due = Utc::now() + chrono::Duration::hours(24);
+        let review_due_iso = review_due.to_rfc3339();
 
         let mut update = Map::new();
         update.insert("status".to_string(), json!("under_review"));
@@ -422,47 +424,62 @@ impl RoomManager {
         }
         update.insert("submitted_at".to_string(), json!(Self::now_iso()));
         update.insert("assigned_reviewer_id".to_string(), json!(reviewer_uid));
+        update.insert("reviewer_backup_id".to_string(), json!(backup_uid));
+        update.insert("review_due_at".to_string(), json!(review_due_iso));
         self.db.update_by_id("tasks", task_id, &update).await.map_err(|e| e.to_string())?;
 
         let _ = self.log_event(room_id, current_uid, "evidence_submitted", json!({
             "task_id": task_id,
             "assigned_reviewer_id": reviewer_uid,
+            "reviewer_backup_id": backup_uid,
+            "review_due_at": review_due_iso,
             "has_evidence_meta": evidence_meta.is_some(),
         })).await;
 
-        Ok(json!({"status": "ok", "assigned_reviewer_id": reviewer_uid}))
+        Ok(json!({"status": "ok", "assigned_reviewer_id": reviewer_uid, "reviewer_backup_id": backup_uid}))
     }
 
-    /// Pilih reviewer secara adil: random dari member yang bukan assignee,
-    /// prefer member bukan leader, fallback ke siapapun.
-    fn pick_reviewer(&self, members: &[Map<String, Value>], assignee_uid: &str) -> String {
-        use rand::prelude::IndexedRandom;
+    /// Pilih reviewer utama dan backup secara adil: random dari member yang bukan assignee.
+    fn pick_reviewers(&self, members: &[Map<String, Value>], assignee_uid: &str) -> (String, String) {
+        use rand::seq::SliceRandom;
         let mut rng = rand::rng();
 
-        let non_leader_candidates: Vec<&str> = members.iter()
-            .filter(|m| {
-                let uid = m.get("uid").and_then(|u| u.as_str()).unwrap_or("");
-                let role = m.get("role").and_then(|r| r.as_str()).unwrap_or("");
-                uid != assignee_uid && role != "leader"
-            })
+        // Kumpulkan semua kandidat UID anggota yang bukan assignee
+        let mut candidates: Vec<String> = members.iter()
             .filter_map(|m| m.get("uid").and_then(|u| u.as_str()))
+            .filter(|&uid| uid != assignee_uid)
+            .map(String::from)
             .collect();
+            
+        // Deduplikasi agar tidak ada UID ganda karena memberMap duplikasi
+        candidates.sort();
+        candidates.dedup();
 
-        if let Some(&uid) = non_leader_candidates.choose(&mut rng) {
-            return uid.to_string();
+        if candidates.is_empty() {
+            // Fallback: jika hanya ada 1 orang di room (self-review)
+            return (assignee_uid.to_string(), assignee_uid.to_string());
         }
 
-        let any_candidates: Vec<&str> = members.iter()
-            .filter(|m| m.get("uid").and_then(|u| u.as_str()).unwrap_or("") != assignee_uid)
-            .filter_map(|m| m.get("uid").and_then(|u| u.as_str()))
-            .collect();
+        // Shuffle kandidat
+        candidates.shuffle(&mut rng);
 
-        if let Some(&uid) = any_candidates.choose(&mut rng) {
-            return uid.to_string();
-        }
+        let primary = candidates[0].clone();
+        let backup = if candidates.len() > 1 {
+            candidates[1].clone()
+        } else {
+            // Jika hanya ada 2 anggota di room, backup diset ke leader atau assignee
+            let leader_uid = members.iter()
+                .filter(|m| m.get("role").and_then(|r| r.as_str()) == Some("leader"))
+                .filter_map(|m| m.get("uid").and_then(|u| u.as_str()))
+                .next();
+            if let Some(l_uid) = leader_uid {
+                l_uid.to_string()
+            } else {
+                primary.clone()
+            }
+        };
 
-        // Last fallback: self-review (room with 1 member)
-        assignee_uid.to_string()
+        (primary, backup)
     }
 
     pub async fn review_task_local(&self, room_id: &str, task_id: &str, reviewer_uid: &str, decision: &str, reason: &str) -> Result<Value, String> {
@@ -472,11 +489,19 @@ impl RoomManager {
             .map_err(|e| e.to_string())?
             .ok_or_else(|| "Task not found.".to_string())?;
         let assignee_uid = task.get("assigned_to_id").and_then(|a| a.as_str()).unwrap_or("").to_string();
+        
         let assigned_reviewer = task.get("assigned_reviewer_id").and_then(|a| a.as_str()).unwrap_or("");
+        let reviewer_backup = task.get("reviewer_backup_id").and_then(|r| r.as_str()).unwrap_or("");
 
-        if reviewer_uid != assigned_reviewer {
-            return Err("Forbidden: you are not the assigned reviewer for this task.".to_string());
+        if reviewer_uid != assigned_reviewer && reviewer_uid != reviewer_backup {
+            return Err("Forbidden: you are not the assigned primary or backup reviewer for this task.".to_string());
         }
+
+        let reviewer_member = self.get_member_by_uid(room_id, reviewer_uid).await.ok();
+        let reviewer_name = reviewer_member
+            .as_ref()
+            .and_then(|m| m.get("display_name").and_then(|n| n.as_str()))
+            .unwrap_or("Reviewer");
 
         if decision == "approve" {
             let weight = task.get("weight").and_then(|w| w.as_i64()).unwrap_or(10);
@@ -504,6 +529,26 @@ impl RoomManager {
             task_update.insert("rejection_reason".to_string(), json!(reason));
             self.db.update_by_id("tasks", task_id, &task_update).await.map_err(|e| e.to_string())?;
         }
+
+        // Insert official review decision log into task_comments
+        let comment_text = if decision == "approve" {
+            let r_str = reason.trim();
+            if r_str.is_empty() {
+                "[APPROVED] Tugas disetujui tanpa catatan tambahan.".to_string()
+            } else {
+                format!("[APPROVED] Catatan: {}", r_str)
+            }
+        } else {
+            format!("[REJECTED] Catatan: {}", reason.trim())
+        };
+
+        let mut comment_data = Map::new();
+        comment_data.insert("task_id".to_string(), json!(task_id));
+        comment_data.insert("room_id".to_string(), json!(room_id));
+        comment_data.insert("author_uid".to_string(), json!(reviewer_uid));
+        comment_data.insert("author_name".to_string(), json!(reviewer_name));
+        comment_data.insert("comment_text".to_string(), json!(comment_text));
+        let _ = self.db.insert("task_comments", &comment_data).await;
 
         let event_type = if decision == "approve" { "task_approved" } else { "task_rejected" };
         let _ = self.log_event(room_id, reviewer_uid, event_type, json!({
@@ -717,8 +762,75 @@ impl RoomManager {
 
     // ── Members (get) ────────────────────────────────────────────────────────
 
+    pub async fn sync_member_points(&self, room_id: &str) -> Result<(), String> {
+        let tasks = self.db
+            .select("tasks")
+            .eq("room_id", room_id)
+            .execute()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let members = self.db
+            .select("members")
+            .eq("room_id", room_id)
+            .execute()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let nudges = self.db
+            .select("nudges")
+            .eq("room_id", room_id)
+            .execute()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        for member in members {
+            let uid = member.get("uid").and_then(|u| u.as_str()).unwrap_or("");
+            if uid.is_empty() { continue; }
+
+            // 1. Hitung poin dari Completed Tasks & Kudos
+            let mut calculated_pts = 0i64;
+            for task in &tasks {
+                let assignee = task.get("assigned_to_id").and_then(|a| a.as_str()).unwrap_or("");
+                if assignee == uid {
+                    let status = task.get("status").and_then(|s| s.as_str()).unwrap_or("");
+                    if status == "completed" {
+                        let weight = task.get("weight").and_then(|w| w.as_i64()).unwrap_or(10);
+                        let is_rescue = task.get("is_rescue").and_then(|r| r.as_bool()).unwrap_or(false);
+                        let earned = if is_rescue { ((weight as f64) * 1.5).ceil() as i64 } else { weight };
+                        calculated_pts += earned;
+                    }
+                    let kudos_count = task.get("kudos_count").and_then(|k| k.as_i64()).unwrap_or(0);
+                    calculated_pts += kudos_count;
+                }
+            }
+
+            // 2. Hitung poin dari Nudge Sent (+2 pts per nudge)
+            let nudge_sent_count = nudges
+                .iter()
+                .filter(|n| n.get("from_uid").and_then(|u| u.as_str()) == Some(uid))
+                .count() as i64;
+            let calculated_nudge_pts = nudge_sent_count * 2;
+            calculated_pts += calculated_nudge_pts;
+
+            let current_pts = member.get("total_pts").and_then(|p| p.as_i64()).unwrap_or(0);
+            let current_nudge_pts = member.get("nudge_pts").and_then(|p| p.as_i64()).unwrap_or(0);
+
+            if current_pts != calculated_pts || current_nudge_pts != calculated_nudge_pts {
+                if let Some(id) = member.get("id").and_then(|i| i.as_str()) {
+                    let mut update = Map::new();
+                    update.insert("total_pts".to_string(), json!(calculated_pts));
+                    update.insert("nudge_pts".to_string(), json!(calculated_nudge_pts));
+                    let _ = self.db.update_by_id("members", id, &update).await;
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub async fn get_members(&self, room_id: Option<String>) -> Result<Vec<Map<String, Value>>, String> {
         let rid = self.resolve_room_id(room_id).await?;
+        let _ = self.sync_member_points(&rid).await;
         self.db
             .select("members")
             .eq("room_id", &rid)

@@ -206,6 +206,16 @@
   flex-grow: 1;
   overflow-y: auto;
   padding: 22px 24px;
+  min-height: 0;
+}
+
+/* Ketika menampilkan tasks-container (Kanban Board), batasi tinggi content-body agar kolom-kolomnya saja yang scrollable */
+.content-body:has(.tasks-container) {
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 44px); /* tinggi 100vh dikurangi topbar (44px) */
+  box-sizing: border-box;
 }
 
 /* ── Scrollbar ───────────────────────────────── */

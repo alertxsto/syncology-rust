@@ -18,6 +18,8 @@ interface TaskCardProps {
   onRefresh: () => void;
   highlightedTaskId: string | null;
   onClearHighlight: () => void;
+  allTasks: Task[];
+  onSelectTask?: (t: Task) => void;
 }
 
 const ESC: Record<number, { borderColor: string; badgeBg: string; badgeFg: string; label: string }> = {
@@ -48,12 +50,14 @@ type ModalState =
   | { type: "input";  title: string; label: string; placeholder?: string; inputType?: "text" | "textarea" | "url"; onConfirm: (v: string) => void };
 
 export default function TaskCard({
-  task, members, currentUser, isLeader, roomId, onRefresh, highlightedTaskId, onClearHighlight,
+  task, members, currentUser, isLeader, roomId, onRefresh, highlightedTaskId, onClearHighlight, allTasks, onSelectTask,
 }: TaskCardProps) {
   const [modal, setModal]   = useState<ModalState>({ type: "none" });
   const [actionErr, setErr] = useState("");
   const [showDetail, setShowDetail] = useState(false);
   const [showSubmitEvidence, setShowSubmitEvidence] = useState(false);
+  const [nudgeSuccess, setNudgeSuccess] = useState(false);
+  const [kudosSuccess, setKudosSuccess] = useState(false);
 
   const escLevel   = task.escalation_level || 0;
   const esc        = ESC[escLevel] || ESC[0];
@@ -129,8 +133,27 @@ export default function TaskCard({
     });
 
   const handleReviewApprove = () =>
-    setModal({ type: "confirm", title: "Approve Review", message: "Setujui submission ini? Member akan mendapat poin.",
-      onConfirm: () => { dismiss(); run(() => invoke("call_function", { functionName: "reviewTask", data: { taskId: task.id, reviewerId: currentUser.uid, decision: "approve", reason: "", roomId } })); playChime("success"); } });
+    setModal({
+      type: "input",
+      title: "Approve Review",
+      label: "Catatan Persetujuan (opsional)",
+      placeholder: "Tulis catatan persetujuan opsional (misal: Code clean, test passed!)...",
+      inputType: "textarea",
+      onConfirm: reason => {
+        dismiss();
+        run(() => invoke("call_function", {
+          functionName: "reviewTask",
+          data: {
+            taskId: task.id,
+            reviewerId: currentUser.uid,
+            decision: "approve",
+            reason: reason || "",
+            roomId,
+          }
+        }));
+        playChime("success");
+      }
+    });
 
   const handleReviewReject = () =>
     setModal({ type: "input", title: "Tolak Submission", label: "Alasan Penolakan", placeholder: "Tulis alasan penolakan...", inputType: "textarea",
@@ -138,11 +161,22 @@ export default function TaskCard({
 
   const handleNudge = () => {
     if (!task.assigned_to_id) { setErr("Task belum di-assign, tidak bisa nudge."); return; }
-    run(() => invoke("call_function", { functionName: "sendNudge", data: { toId: task.assigned_to_id, taskId: task.id, roomId } }));
+    run(async () => {
+      await invoke("call_function", { functionName: "sendNudge", data: { toId: task.assigned_to_id, taskId: task.id, roomId } });
+      setNudgeSuccess(true);
+      playChime("success");
+      setTimeout(() => setNudgeSuccess(false), 2500);
+    });
   };
 
-  const handleKudos = () =>
-    run(() => invoke("call_function", { functionName: "giveKudos", data: { taskId: task.id, toId: task.assigned_to_id, roomId } }));
+  const handleKudos = () => {
+    run(async () => {
+      await invoke("call_function", { functionName: "giveKudos", data: { taskId: task.id, toId: task.assigned_to_id, roomId } });
+      setKudosSuccess(true);
+      playChime("success");
+      setTimeout(() => setKudosSuccess(false), 2500);
+    });
+  };
 
   return (
     <>
@@ -200,11 +234,27 @@ export default function TaskCard({
           )}
         </div>
 
-        {task.status === "under_review" && (
-          <div style={{ fontSize: "11px", color: "var(--amber)", fontWeight: 600 }}>
-            Reviewer: {reviewer?.display_name || "Belum ditentukan"}
-          </div>
-        )}
+        {task.status === "under_review" && (() => {
+          const isOverdue = task.review_due_at && new Date(task.review_due_at) < new Date();
+          const backupReviewer = task.reviewer_backup_id ? members[task.reviewer_backup_id] : undefined;
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "4px" }}>
+              <div style={{ fontSize: "11px", color: "var(--amber)", fontWeight: 600 }}>
+                Reviewer: {reviewer?.display_name || "Belum ditentukan"}
+              </div>
+              {backupReviewer && (
+                <div style={{ fontSize: "10px", color: "var(--text-3)" }}>
+                  Backup: {backupReviewer.display_name}
+                </div>
+              )}
+              {task.review_due_at && (
+                <div style={{ fontSize: "10px", color: isOverdue ? "var(--red)" : "var(--text-3)", fontWeight: isOverdue ? 700 : 400 }}>
+                  Review Due: {task.review_due_at.substring(0, 10)} {task.review_due_at.substring(11, 16)} {isOverdue && "⚠️ OVERDUE"}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Description */}
         {task.description && (
@@ -288,11 +338,28 @@ export default function TaskCard({
             <button className="action-btn" style={{ background: "var(--amber)" }} onClick={handleRescue}>Rescue</button>
           )}
           {task.status !== "completed" && !isAssignee && task.assigned_to_id && (
-            <button className="action-btn action-ghost" onClick={handleNudge}>Nudge</button>
+            <button
+              className="action-btn action-ghost"
+              onClick={handleNudge}
+              disabled={nudgeSuccess}
+              style={nudgeSuccess ? { color: "var(--green)", borderColor: "var(--green)" } : undefined}
+            >
+              {nudgeSuccess ? "Nudge Terkirim! 🚀" : "Nudge"}
+            </button>
           )}
-          {task.status === "completed" && !isAssignee && task.assigned_to_id && (
-            <button className="action-btn action-ghost" onClick={handleKudos}>Kudos</button>
-          )}
+          {task.status === "completed" && !isAssignee && task.assigned_to_id && (() => {
+            const hasGivenKudos = task.kudos_by?.includes(currentUser.uid) || kudosSuccess;
+            return (
+              <button
+                className="action-btn action-ghost"
+                onClick={handleKudos}
+                disabled={hasGivenKudos}
+                style={hasGivenKudos ? { color: "var(--green)", borderColor: "var(--green)" } : undefined}
+              >
+                {hasGivenKudos ? "Kudos Diberikan ✓" : "Kudos"}
+              </button>
+            );
+          })()}
           {isLeader && task.status !== "completed" && (
             <button className="action-btn action-ghost" style={{ marginLeft: "auto", color: "var(--red)", borderColor: "var(--red)" }} onClick={handleDelete}>Hapus</button>
           )}
@@ -329,6 +396,13 @@ export default function TaskCard({
           roomId={roomId}
           onClose={() => setShowDetail(false)}
           onRefresh={onRefresh}
+          allTasks={allTasks}
+          onSelectTask={onSelectTask || ((t) => {
+            // Fallback: jika tidak dikirim dari parent, update modal content secara lokal
+            // dengan menutup modal saat ini dan membuka blocker task jika diinginkan,
+            // tetapi di aplikasi ini TasksTab selalu mengirimkan handler ini.
+            if (onSelectTask) onSelectTask(t);
+          })}
         />
       )}
       {showSubmitEvidence && (
@@ -343,9 +417,9 @@ export default function TaskCard({
                 taskId: task.id,
                 roomId,
                 evidenceUrl: payload.evidenceUrl,
-                githubUrl: payload.githubUrl,
-                imageUrls: payload.imageUrls,
-                notes: payload.notes,
+                // Kirim evidenceMeta terstruktur ke backend
+                ...payload.evidenceMeta,
+                evidenceUrl: payload.evidenceUrl, // fallback
               },
             }));
           }}

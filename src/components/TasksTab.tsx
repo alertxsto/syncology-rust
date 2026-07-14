@@ -6,6 +6,7 @@ import ProposeTaskModal from "./ProposeTaskModal";
 import TaskDetailModal from "./TaskDetailModal";
 import CalendarView from "./CalendarView";
 import SubmitEvidenceModal from "./SubmitEvidenceModal";
+import ReviewWorkspace from "./ReviewWorkspace";
 import { cx } from "@/lib/utils";
 import "./Tasks.css";
 
@@ -31,7 +32,7 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
   const [search, setSearch]         = useState("");
   const [isLeader, setIsLeader]     = useState(false);
   const [showPropose, setShowPropose] = useState(false);
-  const [view, setView]             = useState<"kanban" | "calendar">("kanban");
+  const [view, setView]             = useState<"kanban" | "calendar" | "review_workspace">("kanban");
   const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [submitEvidenceTask, setSubmitEvidenceTask] = useState<Task | null>(null);
 
@@ -75,17 +76,27 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
   }, [roomId]);
 
   const FILTER_LABELS: Record<string, string> = {
-    all: "Semua", mine: "Tugasku", audit: "Review", pool: "Ghost Pool",
+    all: "Semua", mine: "Tugasku", audit: "Review", overdue_review: "Overdue Review", pool: "Ghost Pool",
   };
 
   const filteredTasks = tasks.filter(t => {
     // Primary filter chips
     if (filter === "mine" && t.assigned_to_id !== currentUser.uid) return false;
 
-    // "Review" should only show tasks that are currently waiting for my review
+    // "Review" should show tasks where I am primary OR backup reviewer
     if (filter === "audit") {
       if (t.status !== "under_review") return false;
-      if (t.assigned_reviewer_id !== currentUser.uid) return false;
+      const isPrimary = t.assigned_reviewer_id === currentUser.uid;
+      const isBackup = t.reviewer_backup_id === currentUser.uid;
+      if (!isPrimary && !isBackup) return false;
+    }
+
+    // "Overdue Review" shows tasks under review where review deadline has passed
+    if (filter === "overdue_review") {
+      if (t.status !== "under_review") return false;
+      if (!t.review_due_at) return false;
+      const isOverdue = new Date(t.review_due_at) < new Date();
+      if (!isOverdue) return false;
     }
 
     // "Ghost Pool" should show active ghosted tasks only
@@ -194,6 +205,8 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
                   onRefresh={loadData}
                   highlightedTaskId={highlightedTaskId}
                   onClearHighlight={onClearHighlight}
+                  allTasks={tasks}
+                  onSelectTask={(t) => setDetailTask(t)}
                 />
               </div>
             ))
@@ -207,7 +220,7 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
       {/* Toolbar */}
       <div className="tasks-toolbar">
         <div className="filter-group">
-          {(["all", "mine", "audit", "pool"] as const).map(f => (
+          {(["all", "mine", "audit", "overdue_review", "pool"] as const).map(f => (
             <button
               key={f}
               className={cx("filter-btn", filter === f && "active")}
@@ -251,6 +264,13 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
           >
             📅
           </button>
+          <button
+            className={cx("view-btn", view === "review_workspace" && "active")}
+            onClick={() => setView("review_workspace")}
+            title="Review Workspace"
+          >
+            📋
+          </button>
         </div>
 
         <button className="btn-primary" style={{ marginLeft: "auto" }} onClick={() => setShowPropose(true)}>
@@ -263,6 +283,15 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
         <CalendarView
           tasks={filteredTasks}
           onSelectTask={(t) => setDetailTask(t)}
+        />
+      ) : view === "review_workspace" ? (
+        <ReviewWorkspace
+          tasks={tasks}
+          members={members}
+          currentUser={currentUser}
+          isLeader={isLeader}
+          roomId={roomId!}
+          onRefresh={loadData}
         />
       ) : (
         <div className="kanban-board">
@@ -290,6 +319,8 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
           roomId={roomId}
           onClose={() => setDetailTask(null)}
           onRefresh={loadData}
+          allTasks={tasks}
+          onSelectTask={(t) => setDetailTask(t)}
         />
       )}
       {submitEvidenceTask && (
@@ -304,9 +335,9 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
                   taskId: submitEvidenceTask.id,
                   roomId,
                   evidenceUrl: payload.evidenceUrl,
-                  githubUrl: payload.githubUrl,
-                  imageUrls: payload.imageUrls,
-                  notes: payload.notes,
+                  // Kirim evidenceMeta terstruktur ke backend
+                  ...payload.evidenceMeta, 
+                  evidenceUrl: payload.evidenceUrl, // fallback
                 },
               });
               setSubmitEvidenceTask(null);

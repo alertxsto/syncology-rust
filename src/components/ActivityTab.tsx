@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { ActivityEvent, EventType } from "@/types";
+import type { ActivityEvent, EventType, Member } from "@/types";
 import { cx, formatRelative } from "@/lib/utils";
 import { 
   FiTarget, 
@@ -16,7 +16,8 @@ import {
   FiPaperclip, 
   FiBell, 
   FiAlertCircle,
-  FiInbox
+  FiInbox,
+  FiDownload
 } from "react-icons/fi";
 import "./Activity.css";
 
@@ -45,15 +46,21 @@ const EVENT_META: Record<EventType, { label: string; icon: React.ReactNode; colo
 
 export default function ActivityTab({ roomId }: ActivityTabProps) {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [filter, setFilter] = useState<string>("all");
+  const [actorFilter, setActorFilter] = useState<string>("");
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   const loadData = async () => {
     if (!roomId) return;
     setLoading(true);
     try {
-      const data = await invoke<ActivityEvent[]>("get_events", { roomId, limit: 100 });
+      const data = await invoke<ActivityEvent[]>("get_events", { roomId, limit: 200 });
       setEvents(data);
+
+      const mems = await invoke<Member[]>("get_members", { roomId });
+      setMembers(mems);
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -80,9 +87,61 @@ export default function ActivityTab({ roomId }: ActivityTabProps) {
     );
   }
 
-  const filtered = filter === "all"
-    ? events
-    : events.filter(e => e.event_type.startsWith(filter));
+  // Client-side filtering logic
+  const filtered = events.filter(e => {
+    // 1. Filter Kategori Tab
+    if (filter !== "all") {
+      if (!e.event_type.startsWith(filter)) return false;
+    }
+    // 2. Filter Actor
+    if (actorFilter && e.actor_uid !== actorFilter) return false;
+    // 3. Filter Event Type spesifik
+    if (eventTypeFilter && e.event_type !== eventTypeFilter) return false;
+
+    return true;
+  });
+
+  // Export to CSV
+  const handleExportCSV = () => {
+    if (filtered.length === 0) return;
+    const headers = ["Timestamp", "Actor UID", "Actor Name", "Event Type", "Event Label", "Payload"];
+    const rows = filtered.map(e => {
+      const label = EVENT_META[e.event_type]?.label || e.event_type;
+      return [
+        e.timestamp,
+        `"${e.actor_uid}"`,
+        `"${e.actor_name}"`,
+        `"${e.event_type}"`,
+        `"${label}"`,
+        `"${JSON.stringify(e.payload).replace(/"/g, '""')}"`
+      ];
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `activity_log_room_${roomId.substring(0, 6)}_${new Date().toISOString().substring(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Export to JSON
+  const handleExportJSON = () => {
+    if (filtered.length === 0) return;
+    const jsonStr = JSON.stringify(filtered, null, 2);
+    const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(jsonStr);
+
+    const link = document.createElement("a");
+    link.setAttribute("href", dataUri);
+    link.setAttribute("download", `activity_log_room_${roomId.substring(0, 6)}_${new Date().toISOString().substring(0, 10)}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Group by day
   const groups: Record<string, ActivityEvent[]> = {};
@@ -97,7 +156,7 @@ export default function ActivityTab({ roomId }: ActivityTabProps) {
   return (
     <div className="activity-container fade-in">
       {/* Header */}
-      <div className="activity-header">
+      <div className="activity-header" style={{ marginBottom: "14px" }}>
         <h2>Activity Log</h2>
         <div className="activity-filter-group">
           {[
@@ -110,11 +169,78 @@ export default function ActivityTab({ roomId }: ActivityTabProps) {
             <button
               key={f.id}
               className={cx("filter-btn", filter === f.id && "active")}
-              onClick={() => setFilter(f.id)}
+              onClick={() => {
+                setFilter(f.id);
+                setEventTypeFilter("");
+              }}
             >
               {f.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Advanced Filters & Exports Toolbar */}
+      <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--border)" }}>
+        
+        {/* Dropdown Filter Actor */}
+        <select
+          value={actorFilter}
+          onChange={(e) => setActorFilter(e.target.value)}
+          className="comment-input"
+          style={{ width: "160px", padding: "4px 8px", fontSize: "12px", height: "30px" }}
+        >
+          <option value="">-- Semua Pelaku --</option>
+          {members
+            // Deduplicate members list
+            .reduce<Member[]>((acc, current) => {
+              if (!acc.some(item => item.uid === current.uid)) acc.push(current);
+              return acc;
+            }, [])
+            .map((m) => (
+              <option key={m.uid} value={m.uid}>
+                {m.display_name}
+              </option>
+            ))}
+        </select>
+
+        {/* Dropdown Filter Event Type */}
+        <select
+          value={eventTypeFilter}
+          onChange={(e) => setEventTypeFilter(e.target.value)}
+          className="comment-input"
+          style={{ width: "180px", padding: "4px 8px", fontSize: "12px", height: "30px" }}
+        >
+          <option value="">-- Tipe Aktivitas --</option>
+          {Object.entries(EVENT_META)
+            .filter(([key]) => filter === "all" || key.startsWith(filter))
+            .map(([key, value]) => (
+              <option key={key} value={key}>
+                {value.label}
+              </option>
+            ))}
+        </select>
+
+        {/* Export Buttons */}
+        <div style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
+          <button
+            onClick={handleExportCSV}
+            disabled={filtered.length === 0}
+            className="btn-secondary"
+            style={{ fontSize: "11px", height: "30px", display: "flex", alignItems: "center", gap: "5px", padding: "0 10px" }}
+            title="Ekspor log ke CSV"
+          >
+            <FiDownload size={13} /> CSV
+          </button>
+          <button
+            onClick={handleExportJSON}
+            disabled={filtered.length === 0}
+            className="btn-secondary"
+            style={{ fontSize: "11px", height: "30px", display: "flex", alignItems: "center", gap: "5px", padding: "0 10px" }}
+            title="Ekspor log ke JSON"
+          >
+            <FiDownload size={13} /> JSON
+          </button>
         </div>
       </div>
 
@@ -136,17 +262,45 @@ export default function ActivityTab({ roomId }: ActivityTabProps) {
               </div>
               {groups[day].map(e => {
                 const meta = EVENT_META[e.event_type] ?? { label: e.event_type, icon: "•", color: "var(--text-3)" };
+                const payload = e.payload || {};
+                
+                // Rich metadata text extractor dari payload event
+                const getPayloadSnippet = () => {
+                  if (e.event_type === "nudge_sent") {
+                    return `kepada ${members.find(m => m.uid === payload.to_uid)?.display_name || "Anggota"} untuk tugas "${payload.task_title || "tugas"}"`;
+                  }
+                  if (e.event_type === "evidence_submitted") {
+                    return `untuk tugas "${payload.task_id?.substring(0, 6) || "tugas"}"`;
+                  }
+                  if (e.event_type.startsWith("task_")) {
+                    return `"${payload.title || payload.task_id?.substring(0, 6) || "tugas"}"`;
+                  }
+                  if (e.event_type === "backup_called") {
+                    return `"${payload.message || "butuh bantuan"}"`;
+                  }
+                  return "";
+                };
+
+                const snippet = getPayloadSnippet();
+
                 return (
                   <div key={e.id} className="activity-item">
                     <div className="activity-icon" style={{ background: `${meta.color}1a`, color: meta.color }}>
                       {meta.icon}
                     </div>
                     <div className="activity-body">
-                      <div className="activity-line">
-                        <span className="activity-actor">{e.actor_name}</span>
-                        <span className="activity-action">{meta.label}</span>
+                      <div className="activity-line" style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <div>
+                          <span className="activity-actor">{e.actor_name}</span>
+                          <span className="activity-action">{meta.label}</span>
+                        </div>
+                        {snippet && (
+                          <div style={{ fontSize: "11px", color: "var(--text-2)", fontStyle: "italic", background: "var(--bg-base)", padding: "2px 8px", borderRadius: "4px", width: "fit-content", marginTop: "2px" }}>
+                            {snippet}
+                          </div>
+                        )}
                       </div>
-                      <div className="activity-time">{formatRelative(e.timestamp)}</div>
+                      <div className="activity-time" style={{ marginTop: "4px" }}>{formatRelative(e.timestamp)}</div>
                     </div>
                   </div>
                 );

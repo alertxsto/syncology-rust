@@ -129,14 +129,20 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
   }, [theme]);
 
   /* ── Toast system with dedup ────────────────────────────────── */
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const addToast = useCallback((title: string, message: string, type: ToastType = "info", taskId?: string, senderName?: string, dedupKey?: string) => {
+    const id = Math.random().toString(36).substring(2, 9);
     setToasts(prev => {
       // Dedup: if same dedupKey exists in last 5 seconds, skip
       if (dedupKey) {
-        const existing = prev.find(t => t.dedupKey === dedupKey && Date.now() - t.id < 5000);
+        // Karena t.id berupa string, kita tidak bisa langsung kurangi dari Date.now().
+        // Tapi kita bisa bandingkan dedupKey di list yang aktif saat ini.
+        const existing = prev.find(t => t.dedupKey === dedupKey);
         if (existing) return prev;
       }
-      const id = Date.now() + Math.random();
       const newToasts = [...prev, { id, title, message, type, taskId, senderName, dedupKey }];
       // Cap at 5 toasts visible
       return newToasts.slice(-5);
@@ -150,11 +156,11 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
     } else if (type === "error") {
       playChime("error");
     }
-    // Auto-dismiss
+    // Auto-dismiss after 4 seconds (safe and specific by ID)
     setTimeout(() => {
-      setToasts(prev => prev.filter(t => Date.now() - t.id < 4000));
+      removeToast(id);
     }, 4000);
-  }, []);
+  }, [removeToast]);
 
   /* ── Data loaders ───────────────────────────────────────────── */
   const loadData = async () => {
@@ -518,8 +524,27 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
       {/* Toast */}
       <div className="toast-container">
         {toasts.map(t => (
-          <div key={t.id} className={cx("toast", `toast-${t.type}`)}>
-            <div className="toast-title">{t.title}</div>
+          <div key={t.id} className={cx("toast", `toast-${t.type}`)} style={{ position: "relative" }}>
+            <button
+              onClick={() => removeToast(t.id)}
+              style={{
+                position: "absolute",
+                top: "8px",
+                right: "8px",
+                background: "none",
+                border: "none",
+                color: "var(--text-3)",
+                cursor: "pointer",
+                fontSize: "12px",
+                padding: "2px 6px",
+                borderRadius: "4px",
+                lineHeight: 1,
+              }}
+              title="Tutup notifikasi"
+            >
+              ✕
+            </button>
+            <div className="toast-title" style={{ paddingRight: "18px" }}>{t.title}</div>
             <div className="toast-message">{t.message}</div>
             {t.type && t.type !== "info" && (
               <div className="toast-actions">
@@ -529,6 +554,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                     onClick={() => {
                       setHighlightedTaskId(t.taskId!);
                       setActiveTab("tasks");
+                      removeToast(t.id);
                     }}
                   >
                     Lihat Tugas
@@ -541,6 +567,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
                       setChatInput("Oke, lagi gw kerjain!");
                       setShowChat(true);
                       setShowNotif(false);
+                      removeToast(t.id);
                     }}
                   >
                     Balas Chat
