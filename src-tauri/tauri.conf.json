@@ -38,8 +38,7 @@
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY2NEU0NERDMzBGMjc3QTYKUldTbWQvSXczRVJPWm5GMmNMZ0RPWnhwQ3lQZ280d2tkZVo2UTREa1A2enpCZDVLaksybnllejAK", 
       "endpoints": [
         "https://github.com/alertxsto/syncology-rust/releases/download/nightly/latest.json",
-        "https://github.com/alertxsto/syncology-rust/releases/download/nightly/updater/latest.json",
-        "https://github.com/alertxsto/syncology-rust/releases/latest/download/updater/latest.json"
+        "https://github.com/alertxsto/syncology-rust/releases/latest/download/latest.json"
       ]
     }
   }
