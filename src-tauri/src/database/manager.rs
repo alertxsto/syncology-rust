@@ -36,10 +36,18 @@ impl RoomManager {
     }
 
     /// Lookup a member doc by Firebase Auth UID. Returns the member map.
+    ///
+    /// Supports legacy field names so older rooms still work after schema migrations.
     async fn get_member_by_uid(&self, room_id: &str, uid: &str) -> Result<Map<String, Value>, String> {
         let members = self.fb.list(&format!("rooms/{}/members", room_id)).await.map_err(|e| e.to_string())?;
         members.into_iter()
-            .find(|m| m.get("uid").and_then(|u| u.as_str()) == Some(uid))
+            .find(|m| {
+                let uid_match = ["uid", "user_uid", "user_id", "userId", "firebase_uid"]
+                    .iter()
+                    .any(|k| m.get(*k).and_then(|u| u.as_str()) == Some(uid));
+                let doc_id_match = m.get("id").and_then(|v| v.as_str()) == Some(uid);
+                uid_match || doc_id_match
+            })
             .ok_or_else(|| "You are not a member of this room.".to_string())
     }
 

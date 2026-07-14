@@ -41,6 +41,8 @@ export default function TaskDetailModal({
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
   const commentListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export default function TaskDetailModal({
 
   useEffect(() => {
     loadComments();
-  }, [task.id]);
+  }, [task.id, roomId]);
 
   useEffect(() => {
     // Scroll to bottom when comments change
@@ -60,30 +62,56 @@ export default function TaskDetailModal({
     }
   }, [comments]);
 
+  const toErrorMessage = (err: unknown, fallback: string) => {
+    if (typeof err === "string") return err;
+    if (err && typeof err === "object" && "message" in err) {
+      const msg = (err as { message?: unknown }).message;
+      if (typeof msg === "string" && msg.trim()) return msg;
+    }
+    return fallback;
+  };
+
   const loadComments = async () => {
+    setLoadingComments(true);
+    setCommentError(null);
     try {
       const data = await invoke<TaskComment[]>("get_task_comments", { taskId: task.id, roomId });
       setComments(data);
-    } catch (e) { console.error("Failed to load comments:", e); }
+    } catch (e) {
+      console.error("Failed to load comments:", e);
+      setCommentError(toErrorMessage(e, "Gagal memuat komentar."));
+    } finally {
+      setLoadingComments(false);
+    }
   };
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
+
     setLoading(true);
+    setCommentError(null);
     try {
       await invoke("add_task_comment", { taskId: task.id, roomId, text: newComment.trim() });
       setNewComment("");
       await loadComments();
-    } catch (e) { console.error(e); }
-    setLoading(false);
+    } catch (e) {
+      console.error(e);
+      setCommentError(toErrorMessage(e, "Gagal mengirim komentar."));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteComment = async (commentId: string) => {
+    setCommentError(null);
     try {
       await invoke("delete_task_comment", { taskId: task.id, roomId, commentId });
       await loadComments();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setCommentError(toErrorMessage(e, "Gagal menghapus komentar."));
+    }
   };
 
   const statusInfo = STATUS_INFO[task.status] ?? { label: task.status, color: "var(--text-3)" };
@@ -292,7 +320,9 @@ export default function TaskDetailModal({
             Comments ({comments.length})
           </div>
           <div className="comments-list" ref={commentListRef}>
-            {comments.length === 0 ? (
+            {loadingComments ? (
+              <div className="comments-empty">Memuat komentar...</div>
+            ) : comments.length === 0 ? (
               <div className="comments-empty">
                 Belum ada komentar. Mulai diskusi tugas ini di bawah.
               </div>
@@ -321,6 +351,11 @@ export default function TaskDetailModal({
               })
             )}
           </div>
+          {commentError && (
+            <div className="task-detail-rejection" style={{ marginBottom: "8px" }}>
+              <strong>Comment error:</strong> {commentError}
+            </div>
+          )}
           <form className="comment-input-form" onSubmit={handleAddComment}>
             <input
               type="text"
