@@ -53,9 +53,8 @@ export default function MemberProfileModal({ uid, roomId, onClose }: MemberProfi
     })();
   }, [uid, roomId]);
 
-  // Build a 52-week heatmap placeholder (would need backend aggregation for real data)
-  // For now, show last 12 weeks as placeholder
-  const weeks = Array.from({ length: 12 }, (_, i) => i);
+  const weekly = stats?.weekly_activity ?? Array.from({ length: 12 }, () => 0);
+  const maxWeekly = Math.max(1, ...weekly);
 
   return (
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -112,22 +111,35 @@ export default function MemberProfileModal({ uid, roomId, onClose }: MemberProfi
                 <div className="mp-stat-value">{stats.nudges_received}</div>
                 <div className="mp-stat-label">Nudge Terima</div>
               </div>
+              <div className="mp-stat">
+                <div className="mp-stat-value" style={{ color: "var(--green)" }}>{stats.reviews_done ?? 0}</div>
+                <div className="mp-stat-label">Review Done</div>
+              </div>
+              <div className="mp-stat">
+                <div className="mp-stat-value" style={{ color: "var(--amber)" }}>{stats.reviews_pending ?? 0}</div>
+                <div className="mp-stat-label">Pending Review</div>
+              </div>
+              <div className="mp-stat">
+                <div className="mp-stat-value">{stats.on_time_rate ?? 0}%</div>
+                <div className="mp-stat-label">On-time Rate</div>
+              </div>
             </div>
 
-            {/* Activity heatmap (placeholder) */}
+            {/* Activity heatmap (real aggregated weekly activity) */}
             <div className="mp-section">
               <div className="mp-section-label">Aktivitas 12 minggu terakhir</div>
               <div className="mp-heatmap">
-                {weeks.map(w => (
-                  <div key={w} className="mp-heatmap-col">
-                    {Array.from({ length: 7 }, (_, d) => (
+                {weekly.map((count, idx) => {
+                  const intensity = count <= 0 ? 0 : Math.max(0.15, count / maxWeekly);
+                  return (
+                    <div key={idx} className="mp-heatmap-col" title={`${count} completion(s)`}>
                       <div
-                        key={d}
-                        className={cx("mp-heatmap-cell", Math.random() > 0.7 && "active")}
+                        className={cx("mp-heatmap-cell", count > 0 && "active")}
+                        style={{ opacity: count > 0 ? intensity : 1 }}
                       />
-                    ))}
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

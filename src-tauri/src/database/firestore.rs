@@ -212,7 +212,7 @@ impl FirestoreClient {
         let body = json!({ "fields": encode_fields(data) });
         let resp = req.json(&body).send().await?;
         let result = self.handle_response(resp, "ADD").await?;
-        
+
         let mut fields = if let Some(f) = result.get("fields").and_then(|f| f.as_object()) {
             decode_fields(f)
         } else {
@@ -229,13 +229,13 @@ impl FirestoreClient {
             let paths: Vec<String> = data.keys().map(|k| format!("updateMask.fieldPaths={}", k)).collect();
             url = format!("{}&{}", url, paths.join("&"));
         }
-        
+
         let mut req = self.client.request(Method::PATCH, url).header("Content-Type", "application/json");
         let token = self.id_token.read().await.clone();
         if !token.is_empty() {
             req = req.header("Authorization", format!("Bearer {}", token));
         }
-        
+
         let body = json!({ "fields": encode_fields(data) });
         let resp = req.json(&body).send().await?;
         self.handle_response(resp, "UPDATE").await?;
@@ -292,7 +292,7 @@ impl FirestoreClient {
 
         let resp = req.json(&body).send().await?;
         let result = self.handle_response(resp, "QUERY").await?;
-        
+
         let mut results = Vec::new();
         if let Some(items) = result.as_array() {
             for item in items {
@@ -302,12 +302,63 @@ impl FirestoreClient {
                     } else {
                         Map::new()
                     };
-                    let doc_id = doc.get("name").and_then(|n| n.as_str()).unwrap_or("").split('/').last().unwrap_or("");
+                    let name = doc.get("name").and_then(|n| n.as_str()).unwrap_or("");
+                    let doc_id = name.split('/').last().unwrap_or("");
                     fields.insert("id".to_string(), json!(doc_id));
+                    fields.insert("_doc_name".to_string(), json!(name));
                     results.push(fields);
-                }
-            }
-        }
-        Ok(results)
-    }
-}
+                 }
+             }
+         }
+         Ok(results)
+     }
+
+     /// Query a collection group across descendants (e.g. all `members` subcollections).
+     pub async fn query_collection_group(&self, collection_id: &str, field: &str, op: &str, value: &Value) -> Result<Vec<Map<String, Value>>> {
+         let mut url = format!("{}:runQuery?key={}", self.config.firestore_base_url(), self.config.api_key);
+         let token = self.id_token.read().await.clone();
+         if !token.is_empty() {
+             url.push_str(&format!("&access_token={}", token));
+         }
+
+         let body = json!({
+             "structuredQuery": {
+                 "from": [{"collectionId": collection_id, "allDescendants": true}],
+                 "where": {
+                     "fieldFilter": {
+                         "field": {"fieldPath": field},
+                         "op": op,
+                         "value": encode_value(value)
+                     }
+                 }
+             }
+         });
+
+         let mut req = self.client.request(Method::POST, url).header("Content-Type", "application/json");
+         if !token.is_empty() {
+             req = req.header("Authorization", format!("Bearer {}", token));
+         }
+
+         let resp = req.json(&body).send().await?;
+         let result = self.handle_response(resp, "QUERY_COLLECTION_GROUP").await?;
+
+         let mut results = Vec::new();
+         if let Some(items) = result.as_array() {
+             for item in items {
+                 if let Some(doc) = item.get("document") {
+                     let mut fields = if let Some(f) = doc.get("fields").and_then(|f| f.as_object()) {
+                         decode_fields(f)
+                     } else {
+                         Map::new()
+                     };
+                     let name = doc.get("name").and_then(|n| n.as_str()).unwrap_or("");
+                     let doc_id = name.split('/').last().unwrap_or("");
+                     fields.insert("id".to_string(), json!(doc_id));
+                     fields.insert("_doc_name".to_string(), json!(name));
+                     results.push(fields);
+                 }
+             }
+         }
+         Ok(results)
+     }
+ }

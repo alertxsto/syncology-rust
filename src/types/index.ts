@@ -174,6 +174,10 @@ export interface MemberStats {
   nudges_sent: number;
   nudges_received: number;
   rescues: number;
+  reviews_done: number;
+  reviews_pending: number;
+  on_time_rate: number;
+  weekly_activity: number[];     // last 12 weeks, completion counts
   current_streak: number;        // consecutive days with ≥1 completed task
   longest_streak: number;
   badges: string[];              // badge IDs

@@ -176,19 +176,36 @@ impl RoomManager {
     }
 
     pub async fn list_my_rooms(&self, uid: &str) -> Result<Vec<Map<String, Value>>, String> {
-        let all_rooms = self.fb.list("rooms").await.map_err(|e| e.to_string())?;
-        let mut my_rooms = Vec::new();
+        // Efficient query: find all member docs for this uid via collection group,
+        // then fetch only those room docs.
+        let member_hits = self
+            .fb
+            .query_collection_group("members", "uid", "EQUAL", &json!(uid))
+            .await
+            .map_err(|e| e.to_string())?;
 
-        for mut room in all_rooms {
-            let room_id = room.get("id").and_then(|i| i.as_str()).unwrap_or("").to_string();
-            let members = self.fb.list(&format!("rooms/{}/members", room_id)).await.unwrap_or(vec![]);
-            for m in members {
-                if m.get("uid").and_then(|u| u.as_str()) == Some(uid) {
-                    room.insert("my_role".to_string(), m.get("role").cloned().unwrap_or(json!("")));
-                    room.insert("my_member_id".to_string(), m.get("id").cloned().unwrap_or(json!("")));
-                    my_rooms.push(room);
-                    break;
-                }
+        let mut my_rooms = Vec::new();
+        let mut seen_room_ids = std::collections::HashSet::new();
+
+        for member in member_hits {
+            let doc_name = member.get("_doc_name").and_then(|v| v.as_str()).unwrap_or("");
+            let room_id = doc_name
+                .split("/rooms/")
+                .nth(1)
+                .and_then(|s| s.split("/members/").next())
+                .unwrap_or("")
+                .to_string();
+
+            if room_id.is_empty() || seen_room_ids.contains(&room_id) {
+                continue;
+            }
+            seen_room_ids.insert(room_id.clone());
+
+            if let Some(mut room) = self.fb.get(&format!("rooms/{}", room_id)).await.map_err(|e| e.to_string())? {
+                room.insert("id".to_string(), json!(room_id));
+                room.insert("my_role".to_string(), member.get("role").cloned().unwrap_or(json!("")));
+                room.insert("my_member_id".to_string(), member.get("id").cloned().unwrap_or(json!("")));
+                my_rooms.push(room);
             }
         }
 
@@ -930,8 +947,12 @@ impl RoomManager {
             e.get("event_type").and_then(|t| t.as_str()) == Some("task_approved")
                 && e.get("actor_uid").and_then(|u| u.as_str()) == Some(uid)
         }).count();
+        let reviews_pending = tasks.iter().filter(|t| {
+            t.get("status").and_then(|s| s.as_str()) == Some("under_review")
+                && t.get("assigned_reviewer_id").and_then(|r| r.as_str()) == Some(uid)
+        }).count();
 
-        // Compute streak: consecutive days with at least 1 completed task
+        // Compute streak + weekly activity: consecutive days with at least 1 completed task
         let mut completion_dates: Vec<chrono::NaiveDate> = my_tasks.iter()
             .filter_map(|t| {
                 t.get("completed_at").and_then(|c| c.as_str())
@@ -964,6 +985,33 @@ impl RoomManager {
             (current, longest)
         };
 
+        // Weekly activity over last 12 weeks (bins)
+        let today = chrono::Utc::now().naive_utc().date();
+        let mut weekly_activity = vec![0i64; 12];
+        for d in &completion_dates {
+            let days_ago = (today - *d).num_days();
+            if days_ago >= 0 {
+                let week_idx_from_now = (days_ago / 7) as usize;
+                if week_idx_from_now < 12 {
+                    let target_idx = 11usize.saturating_sub(week_idx_from_now);
+                    weekly_activity[target_idx] += 1;
+                }
+            }
+        }
+
+        // On-time completion rate
+        let completed_tasks: Vec<_> = my_tasks.iter().filter(|t| t.get("status").and_then(|s| s.as_str()) == Some("completed")).collect();
+        let on_time_done = completed_tasks.iter().filter(|t| {
+            let completed_at = t.get("completed_at").and_then(|v| v.as_str()).unwrap_or("");
+            let deadline = t.get("internal_deadline").and_then(|v| v.as_str()).unwrap_or("");
+            !completed_at.is_empty() && !deadline.is_empty() && completed_at <= deadline
+        }).count();
+        let on_time_rate = if completed_tasks.is_empty() {
+            0i64
+        } else {
+            ((on_time_done as f64 / completed_tasks.len() as f64) * 100.0).round() as i64
+        };
+
         // Award badges
         let mut badges: Vec<String> = Vec::new();
         if completed >= 1      { badges.push("first_blood".into()); }
@@ -987,6 +1035,10 @@ impl RoomManager {
             "nudges_sent": nudges_sent,
             "nudges_received": nudges_received,
             "rescues": rescues,
+            "reviews_done": reviews_done,
+            "reviews_pending": reviews_pending,
+            "on_time_rate": on_time_rate,
+            "weekly_activity": weekly_activity,
             "current_streak": current_streak,
             "longest_streak": longest_streak,
             "badges": badges,
