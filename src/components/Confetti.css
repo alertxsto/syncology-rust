@@ -1,0 +1,37 @@
+/* ── Confetti ───────────────────────────────────────────────── */
+
+.confetti-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 300;
+}
+
+.confetti-particle {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+  animation: confetti-fall 3s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+.confetti-particle.circle  { border-radius: 50%; }
+.confetti-particle.square  { border-radius: 1px; }
+.confetti-particle.triangle {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 9px solid;
+  background: transparent !important;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--vx, 0), calc(100vh + var(--vy, 0))) rotate(calc(var(--rot, 0deg) + 720deg));
+    opacity: 0;
+  }
+}

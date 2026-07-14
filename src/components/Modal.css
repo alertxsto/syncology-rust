@@ -1,0 +1,171 @@
+/* ── Shared Modal CSS ──────────────────────────
+   Used by: ConfirmModal, InputModal, ProposeTaskModal,
+            CreateRoomModal, JoinRoomModal
+   ──────────────────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  backdrop-filter: blur(2px);
+}
+
+/* ── Box ─────────────────────────────────────── */
+.modal-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-xl);
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+}
+
+.modal-sm { max-width: 380px; }
+
+/* ── Header ──────────────────────────────────── */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: -0.01em;
+}
+
+.modal-close {
+  background: transparent;
+  color: var(--text-3);
+  font-size: 13px;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--dur-fast), color var(--dur-fast);
+  font-family: var(--font);
+  cursor: pointer;
+  border: none;
+}
+.modal-close:hover { background: var(--bg-elevated); color: var(--text-1); }
+
+/* ── Body ────────────────────────────────────── */
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 18px 0;
+}
+
+.modal-message {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
+  padding-bottom: 4px;
+}
+
+/* ── Footer ──────────────────────────────────── */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 18px;
+}
+
+/* ── Form elements (shared across all modals) ── */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-2);
+}
+.form-label .req { color: var(--red); }
+
+.form-input {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  color: var(--text-1);
+  font-family: var(--font);
+  font-size: var(--text-sm);
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color var(--dur-fast);
+  width: 100%;
+  box-sizing: border-box;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text-3); }
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-error {
+  font-size: var(--text-xs);
+  color: var(--red);
+  background: var(--red-dim);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+}
+
+.form-error-inline {
+  font-size: var(--text-xs);
+  color: var(--red);
+}
+
+/* ── Difficulty pills ────────────────────────── */
+.diff-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.diff-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text-2);
+  font-family: var(--font);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast);
+}
+.diff-btn:hover  { background: var(--bg-active); color: var(--text-1); }
+.diff-btn:active { transform: translateY(1px); }
+.diff-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-light);
+  font-weight: 700;
+}

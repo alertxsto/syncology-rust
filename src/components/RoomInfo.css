@@ -1,0 +1,147 @@
+/* ── Room Info ────────────────────────────────── */
+.room-info-container { display: flex; flex-direction: column; gap: 22px; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.section-title {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+
+/* ── Info card ───────────────────────────────── */
+.info-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.info-card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-xs);
+}
+.info-card-row:last-child { border-bottom: none; }
+
+.info-card-label { color: var(--text-3); min-width: 120px; flex-shrink: 0; font-weight: 500; }
+.info-card-value { color: var(--text-1); font-weight: 500; flex: 1; }
+.info-card-value.code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-light);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+/* ── Members table ───────────────────────────── */
+.members-table {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.members-table-header {
+  display: grid;
+  grid-template-columns: 1fr 80px 60px 90px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+}
+
+.members-table-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 60px 90px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-xs);
+  align-items: center;
+  transition: background var(--dur-fast);
+}
+.members-table-row:last-child { border-bottom: none; }
+.members-table-row:hover { background: var(--bg-elevated); }
+
+.member-cell-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sm-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.members-table-row .name { color: var(--text-1); font-weight: 600; }
+.members-table-row .pts  {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--amber);
+}
+
+.members-table-row .role-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+}
+.members-table-row .role-badge.leader { background: var(--accent-dim); color: var(--accent-light); }
+.members-table-row .role-badge.member { background: var(--bg-active);  color: var(--text-2); }
+
+/* ── Danger zone ─────────────────────────────── */
+.danger-zone {
+  background: var(--bg-surface);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.danger-zone-text h4 { font-size: 12px; font-weight: 700; color: var(--text-1); }
+.danger-zone-text p  { font-size: var(--text-xs); color: var(--text-3); margin-top: 2px; }
+
+.btn-danger {
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+  padding: 5px 12px;
+  border-radius: var(--r-sm);
+  font-family: var(--font);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast), transform var(--dur-fast);
+}
+.btn-danger:hover  { background: var(--red-dim); }
+.btn-danger:active { transform: translateY(1px); }

@@ -1,0 +1,131 @@
+/* ── Activity Tab ────────────────────────────────────────────── */
+
+.activity-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.activity-header h2 {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.activity-filter-group {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 3px;
+}
+
+.activity-loading,
+.activity-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.activity-empty-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.activity-empty h3 {
+  font-size: 16px;
+  color: var(--text-2);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.activity-day-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+
+.activity-day-count {
+  font-family: var(--font-mono);
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  transition: background 120ms;
+}
+.activity-item:hover { background: var(--bg-surface); }
+
+.activity-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.activity-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.activity-line {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.activity-actor {
+  color: var(--text-1);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.activity-action {
+  color: var(--text-2);
+}
+
+.activity-time {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}

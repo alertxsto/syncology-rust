@@ -1,0 +1,164 @@
+/* ── Cross-Room Dashboard ───────────────────────────────────── */
+
+.crd-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.crd-header h2 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text-1);
+  margin-bottom: 4px;
+}
+
+.crd-sub {
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+.crd-stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.crd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crd-loading {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+/* Deadlines */
+.crd-deadlines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.crd-deadline-row {
+  display: grid;
+  grid-template-columns: 180px 1fr 140px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color 120ms;
+}
+.crd-deadline-row:hover { border-color: var(--border-strong); }
+.crd-deadline-row.overdue {
+  border-left: 3px solid var(--red);
+}
+.crd-deadline-row.urgent {
+  border-left: 3px solid var(--amber);
+}
+
+.crd-deadline-room {
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crd-deadline-title {
+  font-size: 13px;
+  color: var(--text-1);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crd-deadline-when {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-align: right;
+}
+.crd-deadline-row.overdue .crd-deadline-when { color: var(--red); }
+.crd-deadline-row.urgent .crd-deadline-when { color: var(--amber); }
+
+.crd-deadline-date {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+/* Per-room cards */
+.crd-room-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.crd-room-card {
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color 120ms, transform 120ms;
+}
+.crd-room-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.crd-room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.crd-room-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.crd-room-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.crd-stat-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.crd-stat-chip.open     { background: var(--accent-dim); color: var(--accent-light); }
+.crd-stat-chip.review   { background: var(--amber-dim); color: var(--amber); }
+.crd-stat-chip.done     { background: var(--green-dim); color: var(--green); }
+.crd-stat-chip.overdue  { background: var(--red-dim); color: var(--red); }
+.crd-stat-chip.ghost    { background: var(--purple-dim); color: var(--purple); }
+
+/* ── Mobile ────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .crd-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .crd-deadline-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .crd-deadline-when { text-align: left; }
+}
