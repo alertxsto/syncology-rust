@@ -132,7 +132,7 @@ jobs:
           name: Nightly Build
           prerelease: true
           allowUpdates: true
-          replacesArtifacts: true
+          removeArtifacts: true
           makeLatest: false
           body: |
             Auto-generated nightly build from `${{ github.sha }}`.
