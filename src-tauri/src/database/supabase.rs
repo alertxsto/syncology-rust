@@ -142,6 +142,7 @@ impl SelectQuery {
 
 #[derive(Clone)]
 pub struct SupabaseClient {
+    pub supabase_url: String,
     pub base_url: String,
     pub service_key: String,
     pub anon_key: String,
@@ -150,9 +151,10 @@ pub struct SupabaseClient {
 
 impl SupabaseClient {
     pub fn new(supabase_url: &str, service_key: &str, anon_key: &str) -> Self {
-        // base_url = https://<ref>.supabase.co/rest/v1
-        let base_url = format!("{}/rest/v1", supabase_url.trim_end_matches('/'));
+        let raw_url = supabase_url.trim_end_matches('/').to_string();
+        let base_url = format!("{}/rest/v1", raw_url);
         Self {
+            supabase_url: raw_url,
             base_url,
             service_key: service_key.to_string(),
             anon_key: anon_key.to_string(),
@@ -304,6 +306,39 @@ impl SupabaseClient {
     /// GET single row by id, return None jika tidak ditemukan.
     pub async fn get_by_id(&self, table: &str, id: &str) -> Result<Option<Map<String, Value>>> {
         self.select(table).eq("id", id).execute_single().await
+    }
+
+    // ── Storage ───────────────────────────────────────────────────────────────────
+
+    pub fn storage_url(&self, bucket: &str, path: &str) -> String {
+        format!("{}/storage/v1/object/{}/{}", self.supabase_url, bucket, path)
+    }
+
+    pub fn public_url(&self, bucket: &str, path: &str) -> String {
+        format!("{}/storage/v1/object/public/{}/{}", self.supabase_url, bucket, path)
+    }
+
+    pub async fn upload_file(&self, bucket: &str, path: &str, data: Vec<u8>, content_type: &str) -> Result<String> {
+        let url = self.storage_url(bucket, path);
+        let resp = self.client
+            .post(&url)
+            .header("apikey", &self.anon_key)
+            .header("Authorization", format!("Bearer {}", self.service_key))
+            .header("Content-Type", content_type)
+            .header("x-upsert", "true")
+            .body(data)
+            .send()
+            .await?;
+
+        let status = resp.status();
+        let text = resp.text().await?;
+        if !status.is_success() {
+            return Err(SupabaseError::ApiError {
+                status: status.as_u16(),
+                message: format!("Storage upload failed: {}", text.chars().take(300).collect::<String>()),
+            });
+        }
+        Ok(self.public_url(bucket, path))
     }
 }
 

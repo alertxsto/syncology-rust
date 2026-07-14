@@ -95,6 +95,67 @@ pub async fn stop_room_watcher(
     Ok(())
 }
 
+// ── Evidence file upload ────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn upload_evidence_file(
+    file_path: String,
+    task_id: String,
+    db: State<'_, Arc<Database>>,
+) -> Result<Value, String> {
+    let path = std::path::Path::new(&file_path);
+    let file_name = path.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let ext = path.extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    let mime = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "bmp" => "image/bmp",
+        "svg" => "image/svg+xml",
+        "pdf" => "application/pdf",
+        "doc" => "application/msword",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xls" => "application/vnd.ms-excel",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "ppt" => "application/vnd.ms-powerpoint",
+        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "txt" => "text/plain",
+        "zip" => "application/zip",
+        _ => "application/octet-stream",
+    };
+
+    let max_size: u64 = 10 * 1024 * 1024;
+    let metadata = std::fs::metadata(&file_path).map_err(|e| format!("Cannot read file: {}", e))?;
+    if metadata.len() > max_size {
+        return Err(format!("File too large ({} bytes). Max 10 MB.", metadata.len()));
+    }
+
+    let data = std::fs::read(&file_path).map_err(|e| format!("Read error: {}", e))?;
+    let size = data.len() as u64;
+
+    let ts = chrono::Utc::now().timestamp_millis();
+    let storage_path = format!("{}/{}_{}", task_id, ts, file_name);
+
+    let bucket = "evidence-files";
+    let public_url = db.db.upload_file(bucket, &storage_path, data, mime).await
+        .map_err(|e| e.to_string())?;
+
+    Ok(serde_json::json!({
+        "url": public_url,
+        "file_name": file_name,
+        "file_type": mime,
+        "file_size": size,
+    }))
+}
+
 #[tauri::command]
 pub async fn sign_in_with_google(db: State<'_, Arc<Database>>) -> Result<FirebaseUser, String> {
     // Build FirebaseConfig for the OAuth flow from the cf_caller's stored config
@@ -268,9 +329,12 @@ pub async fn call_function(
             let github_url = data.get("githubUrl").and_then(|v| v.as_str()).unwrap_or("");
             let notes = data.get("notes").and_then(|v| v.as_str()).unwrap_or("");
             let image_urls = data.get("imageUrls").cloned().unwrap_or_else(|| Value::Array(vec![]));
+            let evidence_type = data.get("type").and_then(|v| v.as_str()).unwrap_or("other_url");
 
             let primary_url = if !evidence_url.is_empty() {
                 evidence_url.to_string()
+            } else if let Some(u) = data.get("primary_url").and_then(|v| v.as_str()) {
+                u.to_string()
             } else if !github_url.is_empty() {
                 github_url.to_string()
             } else if let Some(first) = image_urls.as_array().and_then(|a| a.first()).and_then(|v| v.as_str()) {
@@ -283,11 +347,19 @@ pub async fn call_function(
                 return Err("Missing required parameters for submitEvidence.".to_string());
             }
 
-            let evidence_meta = serde_json::json!({
+            let mut evidence_meta = serde_json::json!({
+                "type": evidence_type,
                 "github_url": github_url,
                 "image_urls": image_urls,
                 "notes": notes,
             });
+            if let Some(m) = evidence_meta.as_object_mut() {
+                if let Some(v) = data.get("file_name").and_then(|v| v.as_str()) { m.insert("file_name".into(), serde_json::json!(v)); }
+                if let Some(v) = data.get("file_type").and_then(|v| v.as_str()) { m.insert("file_type".into(), serde_json::json!(v)); }
+                if let Some(v) = data.get("file_size").and_then(|v| v.as_i64()) { m.insert("file_size".into(), serde_json::json!(v)); }
+                if let Some(v) = data.get("github_pr_num").and_then(|v| v.as_str()) { m.insert("github_pr_num".into(), serde_json::json!(v)); }
+                if let Some(v) = data.get("github_commit_hash").and_then(|v| v.as_str()) { m.insert("github_commit_hash".into(), serde_json::json!(v)); }
+            }
 
             db.room.submit_evidence_local(room_id, task_id, &primary_url, Some(evidence_meta), &current_user_uid).await
         }

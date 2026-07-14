@@ -58,7 +58,7 @@ export const DIFFICULTY_WEIGHT: Record<TaskDifficulty, number> = {
   "Very Hard": 35,
 };
 
-export type EvidenceType = "github_pr" | "github_commit" | "document" | "image" | "other_url";
+export type EvidenceType = "github_pr" | "github_commit" | "document" | "image" | "other_url" | "file_upload";
 
 export interface TypedEvidenceMeta {
   type: EvidenceType;
@@ -67,6 +67,9 @@ export interface TypedEvidenceMeta {
   github_pr_num?: string;
   github_commit_hash?: string;
   image_urls?: string[];
+  file_name?: string;
+  file_type?: string;
+  file_size?: number;
 }
 
 export interface TaskSubtask {

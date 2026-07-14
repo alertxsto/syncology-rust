@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { cx, normalizeExternalUrl } from "@/lib/utils";
 import type { EvidenceType, TypedEvidenceMeta } from "@/types";
 import "./Modal.css";
@@ -7,9 +9,10 @@ interface SubmitEvidenceModalProps {
   taskTitle?: string;
   onCancel: () => void;
   onConfirm: (payload: { evidenceUrl: string; evidenceMeta: TypedEvidenceMeta }) => void;
+  taskId?: string;
 }
 
-export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: SubmitEvidenceModalProps) {
+export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm, taskId }: SubmitEvidenceModalProps) {
   const [evidenceType, setEvidenceType] = useState<EvidenceType>("github_pr");
   const [primaryUrl, setPrimaryUrl] = useState("");
   const [githubPrNum, setGithubPrNum] = useState("");
@@ -17,6 +20,11 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
   const [imageInput, setImageInput] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const [selectedFileSize, setSelectedFileSize] = useState(0);
+  const [uploadedFileMeta, setUploadedFileMeta] = useState<{ url: string; file_name: string; file_type: string; file_size: number } | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -26,7 +34,41 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
 
-  // Clean and parse image inputs (for uploader)
+  const handlePickFile = async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [
+          {
+            name: "All Supported",
+            extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "zip"],
+          },
+        ],
+      });
+      if (!selected) return;
+
+      const filePath = selected as string;
+      const name = filePath.split(/[\\/]/).pop() || "unknown";
+
+      setUploadingFile(true);
+      setSelectedFileName(name);
+      setError("");
+
+      const result = await invoke<{ url: string; file_name: string; file_type: string; file_size: number }>("upload_evidence_file", {
+        filePath,
+        taskId: taskId || "pending",
+      });
+
+      setUploadedFileMeta(result);
+      setSelectedFileSize(result.file_size);
+      setUploadingFile(false);
+    } catch (e) {
+      setError(String(e));
+      setUploadingFile(false);
+      setSelectedFileName("");
+    }
+  };
+
   const imageUrls = useMemo(
     () => imageInput
       .split(/\n|,/) 
@@ -35,8 +77,34 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
     [imageInput]
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const isImage = (mime: string) => mime.startsWith("image/");
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (evidenceType === "file_upload") {
+      if (!uploadedFileMeta) {
+        setError("Pilih dan upload file terlebih dahulu.");
+        return;
+      }
+      const evidenceMeta: TypedEvidenceMeta = {
+        type: "file_upload",
+        primary_url: uploadedFileMeta.url,
+        notes: notes.trim() || undefined,
+        file_name: uploadedFileMeta.file_name,
+        file_type: uploadedFileMeta.file_type,
+        file_size: uploadedFileMeta.file_size,
+      };
+      onConfirm({ evidenceUrl: uploadedFileMeta.url, evidenceMeta });
+      return;
+    }
+
     const cleanUrl = normalizeExternalUrl(primaryUrl.trim());
 
     if (evidenceType !== "image" && !cleanUrl) {
@@ -49,7 +117,6 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
       return;
     }
 
-    // Validation formats
     if (evidenceType === "github_pr" && !cleanUrl.includes("github.com")) {
       setError("URL harus berupa link GitHub Pull Request valid.");
       return;
@@ -87,7 +154,6 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
 
         <form className="modal-body" onSubmit={handleSubmit}>
           
-          {/* Dropdown Tipe Bukti */}
           <div className="form-field">
             <label className="form-label">Tipe Bukti Pengerjaan</label>
             <select
@@ -97,6 +163,8 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
                 setEvidenceType(e.target.value as EvidenceType);
                 setPrimaryUrl("");
                 setError("");
+                setUploadedFileMeta(null);
+                setSelectedFileName("");
               }}
               style={{ padding: "6px 10px", height: "38px" }}
             >
@@ -104,11 +172,65 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
               <option value="github_commit">💻 GitHub Commit</option>
               <option value="document">📄 Dokumen (Notion/Google Docs)</option>
               <option value="image">🖼️ Screenshot / Gambar Bukti</option>
+              <option value="file_upload">📎 Upload File (Gambar/PDF/DOCX)</option>
               <option value="other_url">🔗 Link Web / URL Lainnya</option>
             </select>
           </div>
 
-          {/* Form Dinamis: GitHub PR */}
+          {/* File Upload */}
+          {evidenceType === "file_upload" && (
+            <div className="form-field">
+              <label className="form-label">Upload File Bukti</label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handlePickFile}
+                  disabled={uploadingFile}
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  {uploadingFile ? "⏳ Uploading..." : "📁 Pilih File"}
+                </button>
+                {selectedFileName && (
+                  <span style={{ fontSize: 12, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {selectedFileName} {selectedFileSize > 0 && `(${formatSize(selectedFileSize)})`}
+                  </span>
+                )}
+              </div>
+              {uploadedFileMeta && (
+                <div style={{ marginTop: 10, padding: 10, background: "var(--bg-elevated)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                  {isImage(uploadedFileMeta.file_type) ? (
+                    <img
+                      src={uploadedFileMeta.url}
+                      alt={uploadedFileMeta.file_name}
+                      style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 4, display: "block" }}
+                    />
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                      <span style={{ fontSize: 24 }}>📄</span>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{uploadedFileMeta.file_name}</div>
+                        <div style={{ color: "var(--text-2)" }}>{formatSize(uploadedFileMeta.file_size)} · {uploadedFileMeta.file_type}</div>
+                      </div>
+                    </div>
+                  )}
+                  <a
+                    href={uploadedFileMeta.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: "inline-block", marginTop: 8, fontSize: 12, color: "var(--accent)" }}
+                  >
+                    🔗 Buka di tab baru
+                  </a>
+                </div>
+              )}
+              <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-3)" }}>
+                Format: PNG, JPG, GIF, WebP, PDF, DOCX, XLSX, PPTX, TXT, ZIP. Maks 10 MB.
+              </div>
+            </div>
+          )}
+
+          {/* GitHub PR */}
           {evidenceType === "github_pr" && (
             <>
               <div className="form-field">
@@ -135,7 +257,7 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
             </>
           )}
 
-          {/* Form Dinamis: GitHub Commit */}
+          {/* GitHub Commit */}
           {evidenceType === "github_commit" && (
             <>
               <div className="form-field">
@@ -162,7 +284,7 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
             </>
           )}
 
-          {/* Form Dinamis: Document */}
+          {/* Document */}
           {evidenceType === "document" && (
             <div className="form-field">
               <label className="form-label">Link Dokumen (Google Docs/Notion/Sheets)</label>
@@ -177,7 +299,7 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
             </div>
           )}
 
-          {/* Form Dinamis: Image */}
+          {/* Image URLs */}
           {evidenceType === "image" && (
             <div className="form-field">
               <label className="form-label">Link Gambar Bukti (URL, pisahkan dengan enter atau koma)</label>
@@ -200,7 +322,7 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
             </div>
           )}
 
-          {/* Form Dinamis: Other URL */}
+          {/* Other URL */}
           {evidenceType === "other_url" && (
             <div className="form-field">
               <label className="form-label">Link / URL Bukti Utama</label>
@@ -215,7 +337,7 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
             </div>
           )}
 
-          {/* Notes (Common to all) */}
+          {/* Notes */}
           <div className="form-field">
             <label className="form-label">Catatan Tambahan (opsional)</label>
             <textarea
@@ -231,7 +353,7 @@ export default function SubmitEvidenceModal({ taskTitle, onCancel, onConfirm }: 
 
           <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={onCancel}>Batal</button>
-            <button type="submit" className={cx("btn-primary")}>Submit Bukti</button>
+            <button type="submit" className={cx("btn-primary")} disabled={uploadingFile}>Submit Bukti</button>
           </div>
         </form>
       </div>

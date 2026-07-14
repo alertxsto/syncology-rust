@@ -326,6 +326,7 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
       {submitEvidenceTask && (
         <SubmitEvidenceModal
           taskTitle={submitEvidenceTask.title}
+          taskId={submitEvidenceTask.id}
           onCancel={() => setSubmitEvidenceTask(null)}
           onConfirm={async (payload) => {
             try {

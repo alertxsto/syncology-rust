@@ -403,6 +403,7 @@ export default function TaskCard({
       {showSubmitEvidence && (
         <SubmitEvidenceModal
           taskTitle={task.title}
+          taskId={task.id}
           onCancel={() => setShowSubmitEvidence(false)}
           onConfirm={(payload) => {
             setShowSubmitEvidence(false);

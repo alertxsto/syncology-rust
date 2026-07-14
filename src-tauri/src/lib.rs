@@ -19,6 +19,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .manage(db)
         .invoke_handler(tauri::generate_handler![
             // Auth
@@ -60,6 +61,8 @@ pub fn run() {
             // App updater (Phase 13)
             commands::api::check_for_update,
             commands::api::install_update,
+            // Evidence file upload
+            commands::api::upload_evidence_file,
             // Real-time watcher (Phase 4)
             commands::api::start_room_watcher,
             commands::api::stop_room_watcher,

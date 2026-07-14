@@ -325,10 +325,40 @@ export default function TaskDetailModal({
                 );
               }
 
-              const { type, primary_url, notes, github_pr_num, github_commit_hash, image_urls } = meta;
+              const { type, primary_url, notes, github_pr_num, github_commit_hash, image_urls, file_name, file_type, file_size } = meta;
 
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {/* File Upload */}
+                  {type === "file_upload" && (
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "20px" }}>📎</span>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          <span style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase" }}>File Bukti Upload</span>
+                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{file_name || "File"}</span>
+                          {file_type && (
+                            <span style={{ fontSize: "11px", color: "var(--text-2)" }}>
+                              {file_type} {file_size ? `· ${(file_size / 1024).toFixed(1)} KB` : ""}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {file_type && file_type.startsWith("image/") && (
+                        <div style={{ marginTop: "8px" }}>
+                          <img src={primary_url} alt={file_name || "Evidence"} style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "8px", border: "1px solid var(--border)" }} />
+                        </div>
+                      )}
+                      <button
+                        className="btn-secondary"
+                        style={{ marginTop: "8px", fontSize: "12px" }}
+                        onClick={() => openExternalUrl(primary_url).catch(console.error)}
+                      >
+                        📥 Download / Buka File →
+                      </button>
+                    </div>
+                  )}
+
                   {/* Rich Render berdasarkan Tipe */}
                   {type === "github_pr" && (
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
