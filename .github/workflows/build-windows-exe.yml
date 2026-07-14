@@ -28,6 +28,10 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install NSIS (required for Tauri NSIS bundler)
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
       - name: Install frontend dependencies
         run: npm ci
 
@@ -83,6 +87,12 @@ jobs:
           name: syncology-windows-binary
           path: src-tauri/target/release/*.exe
           if-no-files-found: warn
+
+      - name: Debug bundle output
+        shell: pwsh
+        run: |
+          Write-Host "=== Bundle directory listing ==="
+          Get-ChildItem -Recurse src-tauri/target/release/bundle/ | ForEach-Object { Write-Host $_.FullName }
 
       - name: Generate updater latest.json
         shell: pwsh
