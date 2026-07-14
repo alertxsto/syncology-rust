@@ -82,6 +82,29 @@ fn env_var(keys: &[&str]) -> String {
             }
         }
     }
+    for key in keys {
+        let baked = match *key {
+            "VITE_FIREBASE_API_KEY" => option_env!("VITE_FIREBASE_API_KEY"),
+            "FIREBASE_API_KEY" => option_env!("FIREBASE_API_KEY"),
+            "VITE_FIREBASE_AUTH_DOMAIN" => option_env!("VITE_FIREBASE_AUTH_DOMAIN"),
+            "FIREBASE_AUTH_DOMAIN" => option_env!("FIREBASE_AUTH_DOMAIN"),
+            "VITE_FIREBASE_PROJECT_ID" => option_env!("VITE_FIREBASE_PROJECT_ID"),
+            "FIREBASE_PROJECT_ID" => option_env!("FIREBASE_PROJECT_ID"),
+            "VITE_USE_EMULATOR" => option_env!("VITE_USE_EMULATOR"),
+            "USE_EMULATOR" => option_env!("USE_EMULATOR"),
+            "SUPABASE_URL" => option_env!("SUPABASE_URL"),
+            "VITE_SUPABASE_URL" => option_env!("VITE_SUPABASE_URL"),
+            "SUPABASE_SERVICE_KEY" => option_env!("SUPABASE_SERVICE_KEY"),
+            "SUPABASE_ANON_KEY" => option_env!("SUPABASE_ANON_KEY"),
+            "VITE_SUPABASE_ANON_KEY" => option_env!("VITE_SUPABASE_ANON_KEY"),
+            _ => None,
+        };
+        if let Some(v) = baked {
+            if !v.is_empty() {
+                return v.to_string();
+            }
+        }
+    }
     String::new()
 }
 
