@@ -64,7 +64,7 @@ jobs:
           $replaced = $false
           for ($i = 0; $i -lt $lines.Length; $i++) {
             if (-not $replaced -and $lines[$i] -match '^version\s*=\s*".*"\s*$') {
-              $lines[$i] = "version = \"$v\""
+              $lines[$i] = "version = `"$v`""
               $replaced = $true
             }
           }
