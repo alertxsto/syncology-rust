@@ -3693,6 +3693,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "syncology"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "chrono",
+ "dirs",
+ "dotenvy",
+ "open",
+ "rand",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower-http 0.7.0",
+]
+
+[[package]]
 name = "synstructure"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4043,27 +4064,6 @@ dependencies = [
  "dunce",
  "embed-resource",
  "toml 1.1.2+spec-1.1.0",
-]
-
-[[package]]
-name = "tauri_app"
-version = "0.1.0"
-dependencies = [
- "axum",
- "chrono",
- "dirs",
- "dotenvy",
- "open",
- "rand",
- "reqwest",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "thiserror 2.0.18",
- "tokio",
- "tower-http 0.7.0",
 ]
 
 [[package]]
