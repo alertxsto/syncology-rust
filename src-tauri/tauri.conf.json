@@ -35,7 +35,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM2NDFEODM0NUNGM0FGRkUKUldUK3IvTmNOTmhCeHRURmFEY25rZjh3WEdLOGVmZTk1SUwxREZ0ZW5LVSt6enZIdVN2ZVQ4cmsK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY2NEU0NERDMzBGMjc3QTYKUldTbWQvSXczRVJPWm5GMmNMZ0RPWnhwQ3lQZ280d2tkZVo2UTREa1A2enpCZDVLaksybnllejAK", 
       "endpoints": [
         "https://github.com/alertxsto/syncology-rust/releases/download/nightly/latest.json",
         "https://github.com/alertxsto/syncology-rust/releases/latest/download/latest.json"
