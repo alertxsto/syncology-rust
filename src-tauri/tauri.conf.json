@@ -35,7 +35,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "REPLACE_WITH_TAURI_UPDATER_PUBLIC_KEY",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM2NDFEODM0NUNGM0FGRkUKUldUK3IvTmNOTmhCeHRURmFEY25rZjh3WEdLOGVmZTk1SUwxREZ0ZW5LVSt6enZIdVN2ZVQ4cmsK",
       "endpoints": [
         "https://github.com/alertxsto/syncology-rust/releases/download/nightly/latest.json",
         "https://github.com/alertxsto/syncology-rust/releases/latest/download/latest.json"
