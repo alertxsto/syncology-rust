@@ -1,0 +1,63 @@
+name: Build Windows EXE (Tauri)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app (Windows)
+        env:
+          # Optional: set these in GitHub repo secrets if you need real Firebase config in release builds.
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_USE_EMULATOR: ${{ secrets.VITE_USE_EMULATOR }}
+        run: npm run tauri build
+
+      - name: Upload NSIS installer (.exe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: syncology-windows-nsis
+          path: src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: warn
+
+      - name: Upload MSI installer (.msi)
+        uses: actions/upload-artifact@v4
+        with:
+          name: syncology-windows-msi
+          path: src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: warn
+
+      - name: Upload release binary (.exe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: syncology-windows-binary
+          path: src-tauri/target/release/*.exe
+          if-no-files-found: warn
