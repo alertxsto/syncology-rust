@@ -103,6 +103,8 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
   const [showOnboarding, setShowOnboarding] = useState(!loadPref("onboarding_done", false));
   const [showConfetti, setShowConfetti] = useState(false);
   const [profileMemberUid, setProfileMemberUid] = useState<string | null>(null);
+  const [availableUpdate, setAvailableUpdate] = useState<{ version: string; body?: string; date?: string } | null>(null);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
 
   // Chat & Notification State
   const [showChat, setShowChat] = useState(false);
@@ -261,6 +263,22 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Updater check (once on startup)
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const res = await invoke<any>("check_for_update");
+        if (res?.available && res?.version) {
+          setAvailableUpdate({ version: res.version, body: res.body, date: res.date });
+          addToast("⬆ Update tersedia", `Versi ${res.version} siap diinstal.`, "info");
+        }
+      } catch (e) {
+        console.warn("Updater check skipped:", e);
+      }
+    };
+    run();
+  }, [addToast]);
 
   // Load members when room changes
   useEffect(() => {
@@ -427,6 +445,22 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
     : chatMessages;
 
   const roomHasValue = !!roomId;
+
+  const handleInstallUpdate = async () => {
+    if (!availableUpdate || installingUpdate) return;
+    const ok = window.confirm(`Update v${availableUpdate.version} tersedia. Install sekarang? Aplikasi akan restart setelah selesai.`);
+    if (!ok) return;
+
+    try {
+      setInstallingUpdate(true);
+      addToast("Mengunduh update", `Sedang memasang v${availableUpdate.version}...`, "info");
+      await invoke("install_update");
+    } catch (e) {
+      console.error(e);
+      addToast("Update gagal", "Gagal memasang update. Coba lagi nanti.", "error");
+      setInstallingUpdate(false);
+    }
+  };
 
   const tabLabel: Record<string, string> = {
     home: "My Rooms",
@@ -620,6 +654,30 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
 
         {/* Content */}
         <div className="content-body">
+          {availableUpdate && (
+            <div
+              style={{
+                marginBottom: "12px",
+                border: "1px solid var(--accent)",
+                background: "var(--accent-dim)",
+                color: "var(--text-1)",
+                borderRadius: "var(--r-md)",
+                padding: "10px 12px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <div style={{ fontSize: "12px" }}>
+                <strong>Update tersedia:</strong> v{availableUpdate.version}
+                {availableUpdate.body ? <span style={{ color: "var(--text-2)" }}> · {String(availableUpdate.body).slice(0, 120)}</span> : null}
+              </div>
+              <button className="btn-primary" onClick={handleInstallUpdate} disabled={installingUpdate}>
+                {installingUpdate ? "Installing..." : "Install Update"}
+              </button>
+            </div>
+          )}
           {activeTab === "home"     && (
             rooms.length > 0 ? (
               <div className="home-dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>

@@ -18,6 +18,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(db)
         .invoke_handler(tauri::generate_handler![
             // Auth
@@ -56,6 +57,9 @@ pub fn run() {
             commands::api::set_task_blocked_by,
             // Member stats (Phase 12)
             commands::api::get_member_stats,
+            // App updater (Phase 13)
+            commands::api::check_for_update,
+            commands::api::install_update,
             // Real-time watcher (Phase 4)
             commands::api::start_room_watcher,
             commands::api::stop_room_watcher,

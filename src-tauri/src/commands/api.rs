@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use serde_json::{Value, Map};
 use tauri::{State, AppHandle, Emitter};
+use tauri_plugin_updater::UpdaterExt;
 use tokio::sync::Mutex as TokioMutex;
 use std::collections::HashMap;
 
@@ -527,4 +528,39 @@ pub async fn get_member_stats(
     db: State<'_, Arc<Database>>,
 ) -> Result<Value, String> {
     db.room.get_member_stats(&roomId, &uid).await
+}
+
+// ── App updater (Phase 13) ───────────────────────────────────────
+
+#[tauri::command]
+pub async fn check_for_update(app: AppHandle) -> Result<Value, String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    let update = updater.check().await.map_err(|e| e.to_string())?;
+
+    if let Some(update) = update {
+        Ok(serde_json::json!({
+            "available": true,
+            "version": update.version,
+            "date": update.date.map(|d| d.to_string()),
+            "body": update.body,
+        }))
+    } else {
+        Ok(serde_json::json!({ "available": false }))
+    }
+}
+
+#[tauri::command]
+pub async fn install_update(app: AppHandle) -> Result<(), String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
+        update
+            .download_and_install(
+                |_chunk_len, _content_len| {},
+                || {},
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+        app.restart();
+    }
+    Ok(())
 }
