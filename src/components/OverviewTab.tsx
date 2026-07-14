@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Room, Task, Member } from "@/types";
 import { SkeletonList } from "./Skeleton";
-import { FiActivity, FiAward, FiBarChart2 } from "react-icons/fi";
 import "./Overview.css";
 
 interface OverviewTabProps {

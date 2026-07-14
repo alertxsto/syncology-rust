@@ -250,10 +250,6 @@ export default function TaskDetailModal({
   const reviewer = members[task.assigned_reviewer_id];
   const backupReviewer = task.reviewer_backup_id ? members[task.reviewer_backup_id] : undefined;
 
-  const evidenceMeta = task.evidence_meta;
-  const evidenceGithub = evidenceMeta?.github_url || "";
-  const evidenceImages = evidenceMeta?.image_urls || [];
-  const evidenceNotes = evidenceMeta?.notes || "";
   const totalSubtasks = subtasks.length;
   const doneSubtasks = subtasks.filter(s => s.done).length;
   const subtaskProgress = totalSubtasks > 0 ? Math.round((doneSubtasks / totalSubtasks) * 100) : 0;

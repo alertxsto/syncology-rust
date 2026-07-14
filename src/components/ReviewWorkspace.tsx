@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Task, Member } from "@/types";
-import { cx, formatDate, initials, openExternalUrl } from "@/lib/utils";
-import { FiCheckSquare, FiClock, FiFileText, FiImage, FiInbox, FiSlash, FiZap } from "react-icons/fi";
+import { cx, openExternalUrl } from "@/lib/utils";
+import { FiCheckSquare, FiClock, FiInbox } from "react-icons/fi";
 import "./ReviewWorkspace.css";
 
 interface ReviewWorkspaceProps {

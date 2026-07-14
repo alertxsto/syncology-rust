@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Syncology",
-  "version": "0.1.0",
+  "version": "0.1.99",
   "identifier": "com.pusync.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -35,7 +35,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY2NEU0NERDMzBGMjc3QTYKUldTbWQvSXczRVJPWm5GMmNMZ0RPWnhwQ3lQZ280d2tkZVo2UTREa1A2enpCZDVLaksybnllejAK", 
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY2NEU0NERDMzBGMjc3QTYKUldTbWQvSXczRVJPWm5GMmNMZ0RPWnhwQ3lQZ280d2tkZVo2UTREa1A2enpCZDVLaksybnllejAK",
       "endpoints": [
         "https://github.com/alertxsto/syncology-rust/releases/download/nightly/latest.json",
         "https://github.com/alertxsto/syncology-rust/releases/latest/download/latest.json"

@@ -397,12 +397,7 @@ export default function TaskCard({
           onClose={() => setShowDetail(false)}
           onRefresh={onRefresh}
           allTasks={allTasks}
-          onSelectTask={onSelectTask || ((t) => {
-            // Fallback: jika tidak dikirim dari parent, update modal content secara lokal
-            // dengan menutup modal saat ini dan membuka blocker task jika diinginkan,
-            // tetapi di aplikasi ini TasksTab selalu mengirimkan handler ini.
-            if (onSelectTask) onSelectTask(t);
-          })}
+          onSelectTask={onSelectTask}
         />
       )}
       {showSubmitEvidence && (
@@ -419,7 +414,6 @@ export default function TaskCard({
                 evidenceUrl: payload.evidenceUrl,
                 // Kirim evidenceMeta terstruktur ke backend
                 ...payload.evidenceMeta,
-                evidenceUrl: payload.evidenceUrl, // fallback
               },
             }));
           }}

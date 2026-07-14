@@ -336,8 +336,7 @@ export default function TasksTab({ currentUser, roomId, highlightedTaskId, onCle
                   roomId,
                   evidenceUrl: payload.evidenceUrl,
                   // Kirim evidenceMeta terstruktur ke backend
-                  ...payload.evidenceMeta, 
-                  evidenceUrl: payload.evidenceUrl, // fallback
+                  ...payload.evidenceMeta,
                 },
               });
               setSubmitEvidenceTask(null);
