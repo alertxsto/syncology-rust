@@ -2,6 +2,46 @@
 
 Dokumen ini disusun untuk jadi **catatan task yang bisa langsung dieksekusi** (engineering + product), dengan standar enterprise tapi tetap cocok untuk strategi open-source.
 
+## Status Eksekusi (Live)
+
+Legend:
+- `[x]` selesai
+- `[-]` parsial / sedang berjalan
+- `[ ]` belum dikerjakan
+
+### Batch A — Review Clarity & Task Granularity
+- [-] **TASK-A1** Subtask/Checklist Engine  
+  _Progress_: basic checklist (add/toggle/delete + progress bar di card & detail) sudah ada.  
+  _Remaining_: reorder, assignee per subtask, due date per subtask, auto-status policy.
+- [-] **TASK-A2** Review Ownership Visibility  
+  _Progress_: reviewer sudah terlihat di card/detail + filter review by current reviewer.  
+  _Remaining_: reviewer backup, review due date, overdue filter, mini profile reviewer.
+- [ ] **TASK-A3** Review Workspace (Interactive Queue)
+- [-] **TASK-A4** Dependency & Blocker Map  
+  _Progress_: blocked badge + detail visibility sudah ada.  
+  _Remaining_: editor dependency interaktif, quick action open blocker, done-override policy.
+
+### Batch B — Evidence & Audit Trail
+- [-] **TASK-B1** Evidence Hub  
+  _Progress_: GitHub URL + image URL + notes + preview + open link sudah jalan.  
+  _Remaining_: typed evidence model (`github_pr`/`commit`/`image`/`doc_link`/`note`), GitHub metadata auto-parse.
+- [-] **TASK-B2** Activity Log 2.0  
+  _Progress_: event coverage bertambah (`task_updated`, `task_deleted`, `kudos_sent`).  
+  _Remaining_: deep-link ke target context, grouping by task/day.
+- [ ] **TASK-B3** Review Decision Notes
+
+### Batch C — Profile & Team Intelligence
+- [-] **TASK-C1** Profile “Work DNA”  
+  _Progress_: weekly activity real + reviews done/pending + on-time rate sudah ada.  
+  _Remaining_: completion rate & response-time breakdown by category/tag + insight cards strength/attention.
+- [ ] **TASK-C2** Team Load Balancer
+
+### Batch D — Reliability & Quota Safety
+- [-] **TASK-D1** Query Budget Guardrail  
+  _Progress_: `list_my_rooms` sudah dioptimasi pakai collection-group query (read lebih hemat).  
+  _Remaining_: retry backoff 429, request dedupe/coalescing, short-lived cache di flow panas.
+- [ ] **TASK-D2** Offline-Tolerant UX
+
 ---
 
 ## 1) Positioning: “Kita jual mahal di fitur apa?”

@@ -97,19 +97,19 @@ pub async fn stop_room_watcher(
 
 #[tauri::command]
 pub async fn sign_in_with_google(db: State<'_, Arc<Database>>) -> Result<FirebaseUser, String> {
-    let user = db.auth.sign_in_with_google(db.cf.config.clone()).await.map_err(|e| e.to_string())?;
+    // Build FirebaseConfig for the OAuth flow from the cf_caller's stored config
+    let firebase_config = db.cf.config.clone();
+    let user = db.auth.sign_in_with_google(firebase_config).await.map_err(|e| e.to_string())?;
     db.set_token(user.id_token.clone()).await;
 
     // Spawn a background task that auto-refreshes the token every 50 minutes
     let auth_clone = db.auth.clone();
-    let fb_clone = db.fb.clone();
     let cf_clone = db.cf.clone();
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(tokio::time::Duration::from_secs(50 * 60)).await;
             match auth_clone.ensure_valid_token().await {
                 Ok(new_token) => {
-                    fb_clone.set_token(new_token.clone()).await;
                     cf_clone.set_token(new_token).await;
                 }
                 Err(e) => {
@@ -308,6 +308,14 @@ pub async fn call_function(
                 return Err("Missing required parameters for rescueTask.".to_string());
             }
             db.room.rescue_task_local(room_id, task_id, &current_user_uid).await
+        }
+        "claimTask" => {
+            let task_id = data.get("taskId").and_then(|v| v.as_str()).unwrap_or("");
+            let room_id = data.get("roomId").and_then(|v| v.as_str()).unwrap_or("");
+            if task_id.is_empty() || room_id.is_empty() {
+                return Err("Missing required parameters for claimTask.".to_string());
+            }
+            db.room.claim_task_local(room_id, task_id, &current_user_uid).await
         }
         "callForBackup" => {
             let task_id = data.get("taskId").and_then(|v| v.as_str()).unwrap_or("");

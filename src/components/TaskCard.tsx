@@ -62,9 +62,13 @@ export default function TaskCard({
   const reviewer   = task.assigned_reviewer_id ? members[task.assigned_reviewer_id] : undefined;
   const isAssignee = task.assigned_to_id === currentUser.uid;
   const isReviewer = task.assigned_reviewer_id === currentUser.uid;
+  const isUnassigned = !task.assigned_to_id || task.assigned_to_id === "";
   const weight     = task.weight ?? DIFFICULTY_WEIGHT[task.difficulty] ?? 10;
   const diffColor  = DIFFICULTY_COLOR[task.difficulty] ?? "var(--text-3)";
   const isBlocked  = task.blocked_by && task.blocked_by.length > 0;
+  const totalSubtasks = task.subtasks?.length ?? 0;
+  const doneSubtasks = task.subtasks?.filter(s => s.done).length ?? 0;
+  const subtaskProgress = totalSubtasks > 0 ? Math.round((doneSubtasks / totalSubtasks) * 100) : 0;
 
   const dismiss = () => setModal({ type: "none" });
 
@@ -90,6 +94,9 @@ export default function TaskCard({
   /* ── Action Handlers ────────────────────────── */
   const handleApprove = () =>
     setModal({ type: "confirm", title: "Approve Task", message: `Approve task "${task.title}" dan pindahkan ke Todo?`, onConfirm: () => { dismiss(); run(() => invoke("update_task", { taskId: task.id, data: { status: "todo" }, roomId })); } });
+
+  const handleClaim = () =>
+    setModal({ type: "confirm", title: "Ambil Tugas", message: `Kamu yakin ingin mengambil tugas "${task.title}"?`, onConfirm: () => { dismiss(); run(() => invoke("call_function", { functionName: "claimTask", data: { taskId: task.id, roomId } })); playChime("success"); } });
 
   const handleDelete = () =>
     setModal({ type: "confirm", title: "Hapus Task", message: `Yakin hapus task "${task.title}"? Tindakan ini tidak bisa dibatalkan.`, danger: true, onConfirm: () => { dismiss(); run(() => invoke("delete_task", { taskId: task.id, roomId })); } });
@@ -206,6 +213,19 @@ export default function TaskCard({
           </div>
         )}
 
+        {/* Subtask progress */}
+        {totalSubtasks > 0 && (
+          <div className="task-subtask-progress">
+            <div className="task-subtask-progress-head">
+              <span>Checklist</span>
+              <span>{doneSubtasks}/{totalSubtasks}</span>
+            </div>
+            <div className="task-subtask-progress-track" aria-label={`Subtask progress ${subtaskProgress}%`}>
+              <div className="task-subtask-progress-fill" style={{ width: `${subtaskProgress}%` }} />
+            </div>
+          </div>
+        )}
+
         {/* Backup message */}
         {escLevel === 3 && task.backup_message && (
           <div className="task-card-backup-msg">
@@ -254,6 +274,9 @@ export default function TaskCard({
                 <button className="action-btn" style={{ background: "var(--red)" }} onClick={handleDispute}>Dispute</button>
               )}
             </>
+          )}
+          {isUnassigned && ["todo", "disputed"].includes(task.status) && (
+            <button className="action-btn" style={{ background: "var(--accent)" }} onClick={handleClaim}>Ambil Tugas</button>
           )}
           {isReviewer && task.status === "under_review" && (
             <>

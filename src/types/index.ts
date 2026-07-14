@@ -64,6 +64,14 @@ export interface TaskEvidenceMeta {
   notes?: string;
 }
 
+export interface TaskSubtask {
+  id: string;
+  title: string;
+  done: boolean;
+  created_at: string;
+  completed_at?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -91,6 +99,7 @@ export interface Task {
   // Optional — task dependencies (Phase 7)
   blocked_by?: string[];
   recurrence?: "none" | "daily" | "weekly" | "monthly";
+  subtasks?: TaskSubtask[];
 }
 
 // ── Messages (Chat) ────────────────────────────────────────────

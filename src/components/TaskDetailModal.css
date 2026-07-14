@@ -243,6 +243,64 @@
   font-weight: 600;
 }
 
+/* Subtasks */
+.task-detail-subtasks-progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+}
+.task-detail-subtasks-progress-track {
+  width: 100%;
+  height: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.task-detail-subtasks-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--green));
+  border-radius: 999px;
+  transition: width var(--dur-fast);
+}
+.task-detail-subtasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.task-detail-subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  background: var(--bg-elevated);
+}
+.task-detail-subtask-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  cursor: pointer;
+}
+.task-detail-subtask-main input {
+  accent-color: var(--accent);
+}
+.task-detail-subtask-main span {
+  font-size: 13px;
+  color: var(--text-1);
+}
+.task-detail-subtask-item.done .task-detail-subtask-main span {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
 /* Comments */
 .task-detail-comments-section {
   padding: 12px 20px;

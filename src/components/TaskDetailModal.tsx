@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { Task, Member, TaskComment, TaskStatus } from "@/types";
+import type { Task, Member, TaskComment, TaskStatus, TaskSubtask } from "@/types";
 import { cx, formatDate, formatRelative, formatTime, initials, openExternalUrl } from "@/lib/utils";
 import { FiZap } from "react-icons/fi";
 import "./TaskDetailModal.css";
@@ -36,13 +36,17 @@ export default function TaskDetailModal({
   isLeader: _isLeader,
   roomId,
   onClose,
-  onRefresh: _onRefresh,
+  onRefresh,
 }: TaskDetailModalProps) {
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [subtasks, setSubtasks] = useState<TaskSubtask[]>(task.subtasks ?? []);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [savingSubtasks, setSavingSubtasks] = useState(false);
+  const [subtaskError, setSubtaskError] = useState<string | null>(null);
   const commentListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,6 +65,11 @@ export default function TaskDetailModal({
       commentListRef.current.scrollTop = commentListRef.current.scrollHeight;
     }
   }, [comments]);
+
+  useEffect(() => {
+    setSubtasks(task.subtasks ?? []);
+    setSubtaskError(null);
+  }, [task.id, task.subtasks]);
 
   const toErrorMessage = (err: unknown, fallback: string) => {
     if (typeof err === "string") return err;
@@ -83,6 +92,60 @@ export default function TaskDetailModal({
     } finally {
       setLoadingComments(false);
     }
+  };
+
+  const persistSubtasks = async (nextSubtasks: TaskSubtask[]) => {
+    setSavingSubtasks(true);
+    setSubtaskError(null);
+    try {
+      await invoke("update_task", {
+        taskId: task.id,
+        roomId,
+        data: { subtasks: nextSubtasks },
+      });
+      setSubtasks(nextSubtasks);
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+      setSubtaskError(toErrorMessage(e, "Gagal menyimpan checklist task."));
+    } finally {
+      setSavingSubtasks(false);
+    }
+  };
+
+  const handleAddSubtask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const title = newSubtaskTitle.trim();
+    if (!title) return;
+
+    const now = new Date().toISOString();
+    const item: TaskSubtask = {
+      id: typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      title,
+      done: false,
+      created_at: now,
+    };
+
+    const next = [...subtasks, item];
+    setNewSubtaskTitle("");
+    await persistSubtasks(next);
+  };
+
+  const handleToggleSubtask = async (subtaskId: string) => {
+    const now = new Date().toISOString();
+    const next = subtasks.map((s) =>
+      s.id === subtaskId
+        ? { ...s, done: !s.done, completed_at: !s.done ? now : undefined }
+        : s
+    );
+    await persistSubtasks(next);
+  };
+
+  const handleDeleteSubtask = async (subtaskId: string) => {
+    const next = subtasks.filter((s) => s.id !== subtaskId);
+    await persistSubtasks(next);
   };
 
   const handleAddComment = async (e: React.FormEvent) => {
@@ -123,6 +186,9 @@ export default function TaskDetailModal({
   const evidenceGithub = evidenceMeta?.github_url || "";
   const evidenceImages = evidenceMeta?.image_urls || [];
   const evidenceNotes = evidenceMeta?.notes || "";
+  const totalSubtasks = subtasks.length;
+  const doneSubtasks = subtasks.filter(s => s.done).length;
+  const subtaskProgress = totalSubtasks > 0 ? Math.round((doneSubtasks / totalSubtasks) * 100) : 0;
 
   // Build timeline
   const timeline: TimelineEntry[] = [
@@ -313,6 +379,70 @@ export default function TaskDetailModal({
             </div>
           </div>
         )}
+
+        {/* Subtasks / checklist */}
+        <div className="task-detail-section">
+          <div className="task-detail-section-label">Checklist</div>
+          {totalSubtasks > 0 && (
+            <>
+              <div className="task-detail-subtasks-progress-head">
+                <span>{doneSubtasks}/{totalSubtasks} selesai</span>
+                <span>{subtaskProgress}%</span>
+              </div>
+              <div className="task-detail-subtasks-progress-track" aria-label={`Checklist progress ${subtaskProgress}%`}>
+                <div className="task-detail-subtasks-progress-fill" style={{ width: `${subtaskProgress}%` }} />
+              </div>
+            </>
+          )}
+
+          <div className="task-detail-subtasks-list">
+            {subtasks.length === 0 ? (
+              <div className="comments-empty" style={{ padding: "10px 0" }}>
+                Belum ada checklist. Tambah langkah kerja supaya task lebih granular.
+              </div>
+            ) : subtasks.map((s) => (
+              <div key={s.id} className={cx("task-detail-subtask-item", s.done && "done")}>
+                <label className="task-detail-subtask-main">
+                  <input
+                    type="checkbox"
+                    checked={s.done}
+                    disabled={savingSubtasks}
+                    onChange={() => handleToggleSubtask(s.id)}
+                  />
+                  <span>{s.title}</span>
+                </label>
+                <button
+                  className="comment-delete"
+                  disabled={savingSubtasks}
+                  onClick={() => handleDeleteSubtask(s.id)}
+                  aria-label="Hapus subtask"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {subtaskError && (
+            <div className="task-detail-rejection" style={{ margin: "8px 0 0" }}>
+              <strong>Checklist error:</strong> {subtaskError}
+            </div>
+          )}
+
+          <form className="comment-input-form" onSubmit={handleAddSubtask} style={{ marginTop: "8px" }}>
+            <input
+              type="text"
+              className="comment-input"
+              placeholder="Tambah item checklist..."
+              value={newSubtaskTitle}
+              onChange={(e) => setNewSubtaskTitle(e.target.value)}
+              disabled={savingSubtasks}
+            />
+            <button type="submit" className="comment-submit" disabled={savingSubtasks || !newSubtaskTitle.trim()}>
+              Tambah
+            </button>
+          </form>
+        </div>
 
         {/* Comments thread */}
         <div className="task-detail-comments-section">

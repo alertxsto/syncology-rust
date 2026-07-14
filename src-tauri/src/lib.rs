@@ -8,11 +8,11 @@ pub mod utils;
 use std::sync::Arc;
 use crate::database::manager::Database;
 use crate::services::auth::FirebaseAuth;
-use crate::config::firebase::FirebaseConfig;
+use crate::config::app::AppConfig;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let config = FirebaseConfig::load();
+    let config = AppConfig::load();
     let auth = Arc::new(FirebaseAuth::new());
     let db = Arc::new(Database::new(config, auth));
 
