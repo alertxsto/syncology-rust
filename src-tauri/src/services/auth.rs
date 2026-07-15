@@ -13,43 +13,272 @@ use chrono::{DateTime, Duration, Utc};
 use crate::models::auth::FirebaseUser;
 use crate::config::firebase::FirebaseConfig;
 
-const LOGIN_PAGE_HTML: &str = r#"<!DOCTYPE html>
+const LOGIN_PAGE_HTML: &str = r##"<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PUSync — Login</title>
+<title>Syncology — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0a0a0f;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
 }
+
+/* Animated background orbs */
+body::before {
+  content: '';
+  position: fixed;
+  top: -30%;
+  left: -10%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%);
+  animation: orb1 8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -20%;
+  right: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+  animation: orb2 10s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes orb1 { from { transform: translate(0,0) scale(1); } to { transform: translate(60px, 40px) scale(1.1); } }
+@keyframes orb2 { from { transform: translate(0,0) scale(1); } to { transform: translate(-40px, -60px) scale(1.15); } }
+
+/* Grid overlay */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+/* Card */
 .card {
-  background: white; border-radius: 16px; padding: 40px; width: 360px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2); text-align: center;
+  position: relative;
+  z-index: 10;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 24px;
+  padding: 48px 44px;
+  width: 400px;
+  text-align: center;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04) inset,
+    0 32px 80px rgba(0,0,0,0.6);
+  animation: fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both;
 }
-h1 { font-size: 24px; color: #333; margin-bottom: 8px; }
-p { font-size: 14px; color: #888; margin-bottom: 24px; }
-button {
-  background: #1976d2; color: white; border: none; border-radius: 8px;
-  padding: 14px 32px; font-size: 16px; font-weight: 600; cursor: pointer;
-  width: 100%; transition: background 0.2s;
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-button:hover { background: #1565c0; }
-button:disabled { background: #ccc; cursor: not-allowed; }
-.status { margin-top: 16px; font-size: 13px; color: #666; }
-.error { color: #d32f2f; }
-.success { color: #2e7d32; }
+
+/* Logo */
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.logo-icon {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+/* Animated SVG logo mark */
+.logo-svg .ring {
+  transform-origin: center;
+  animation: spin-slow 12s linear infinite;
+}
+.logo-svg .ring2 {
+  animation-direction: reverse;
+  animation-duration: 9s;
+}
+
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+
+/* Title */
+h1 {
+  font-size: 26px;
+  font-weight: 800;
+  color: #f1f5f9;
+  letter-spacing: -0.04em;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 13.5px;
+  color: rgba(148,163,184,0.85);
+  line-height: 1.6;
+  margin-bottom: 36px;
+  font-weight: 400;
+}
+
+/* Divider */
+.divider {
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  border-radius: 2px;
+  margin: 0 auto 32px;
+}
+
+/* Google button */
+#btnLogin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 13px 20px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  letter-spacing: -0.01em;
+}
+#btnLogin:hover:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+#btnLogin:active:not(:disabled) { transform: translateY(0); }
+#btnLogin:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Status */
+.status {
+  margin-top: 20px;
+  font-size: 12.5px;
+  color: rgba(148,163,184,0.7);
+  min-height: 18px;
+  transition: color 0.2s;
+}
+.error {
+  color: #f87171 !important;
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 16px;
+}
+.success {
+  color: #4ade80 !important;
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 16px;
+}
+
+/* Spinner for loading state */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Footer note */
+.note {
+  margin-top: 28px;
+  font-size: 11px;
+  color: rgba(100,116,139,0.7);
+  line-height: 1.6;
+}
+.note a { color: rgba(148,163,184,0.6); text-decoration: none; }
 </style>
 </head>
 <body>
+<div class="grid-bg"></div>
 <div class="card">
-  <h1>PUSync</h1>
-  <p>Login dengan Google untuk terhubung ke desktop app</p>
-  <button id="btnLogin" onclick="signIn()">Sign in with Google</button>
+  <div class="logo-wrap">
+    <!-- Syncology animated logo mark -->
+    <svg class="logo-icon logo-svg" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="26" cy="26" r="24" stroke="rgba(255,255,255,0.06)" stroke-width="1.5"/>
+      <!-- Outer ring -->
+      <ellipse class="ring" cx="26" cy="26" rx="20" ry="9" stroke="url(#g1)" stroke-width="1.8" stroke-linecap="round"/>
+      <!-- Inner ring rotated -->
+      <ellipse class="ring ring2" cx="26" cy="26" rx="20" ry="9" stroke="url(#g2)" stroke-width="1.8" stroke-linecap="round" transform="rotate(60 26 26)"/>
+      <!-- Third ring -->
+      <ellipse class="ring" cx="26" cy="26" rx="20" ry="9" stroke="url(#g3)" stroke-width="1.4" stroke-linecap="round" transform="rotate(120 26 26)" style="animation-duration:15s"/>
+      <!-- Center dot -->
+      <circle cx="26" cy="26" r="3" fill="url(#g1)" opacity="0.8"/>
+      <defs>
+        <linearGradient id="g1" x1="6" y1="26" x2="46" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#60a5fa"/>
+          <stop offset="1" stop-color="#818cf8"/>
+        </linearGradient>
+        <linearGradient id="g2" x1="6" y1="26" x2="46" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#38bdf8"/>
+          <stop offset="1" stop-color="#6366f1"/>
+        </linearGradient>
+        <linearGradient id="g3" x1="6" y1="26" x2="46" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#7dd3fc"/>
+          <stop offset="1" stop-color="#a5b4fc"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+
+  <h1>Syncology</h1>
+  <p class="subtitle">Masuk dengan akun Google untuk terhubung<br>ke aplikasi desktop Syncology.</p>
+  <div class="divider"></div>
+
+  <button id="btnLogin" onclick="signIn()">
+    <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+    Sign in with Google
+  </button>
+
   <div id="status" class="status">Klik tombol di atas untuk login</div>
+
+  <p class="note">
+    Dengan masuk, kamu menyetujui penggunaan data<br>akun Google untuk autentikasi di aplikasi ini.
+  </p>
 </div>
 <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
@@ -78,8 +307,9 @@ button:disabled { background: #ccc; cursor: not-allowed; }
         const btn = document.getElementById('btnLogin');
         const status = document.getElementById('status');
         btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Membuka popup...';
         status.className = 'status';
-        status.textContent = 'Membuka popup login...';
+        status.textContent = '';
         
         auth.signInWithPopup(provider)
           .then(function(result) {
@@ -100,8 +330,8 @@ button:disabled { background: #ccc; cursor: not-allowed; }
               .then(function(resp) {
                 if (resp.ok) {
                   status.className = 'status success';
-                  status.textContent = 'Login berhasil! Silakan tutup tab ini.';
-                  btn.textContent = 'Berhasil!';
+                  status.textContent = 'Login berhasil! Kamu bisa menutup tab ini.';
+                  btn.innerHTML = '✓ Berhasil!';
                 } else {
                   throw new Error('Gagal kirim token');
                 }
@@ -110,7 +340,7 @@ button:disabled { background: #ccc; cursor: not-allowed; }
                 status.className = 'status error';
                 status.textContent = 'Error: ' + err.message;
                 btn.disabled = false;
-                btn.textContent = 'Coba Lagi';
+                btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Coba Lagi';
               });
             });
           })
@@ -118,7 +348,7 @@ button:disabled { background: #ccc; cursor: not-allowed; }
             status.className = 'status error';
             status.textContent = 'Error: ' + err.message;
             btn.disabled = false;
-            btn.textContent = 'Coba Lagi';
+            btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Coba Lagi';
           });
       };
     })
@@ -128,7 +358,7 @@ button:disabled { background: #ccc; cursor: not-allowed; }
     });
 </script>
 </body>
-</html>"#;
+</html>"##;
 
 struct AppState {
     result: Arc<Mutex<Option<FirebaseUser>>>,

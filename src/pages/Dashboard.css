@@ -23,17 +23,9 @@
 .sidebar-logo {
   width: 30px;
   height: 30px;
-  border-radius: var(--r-md);
-  background: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 800;
-  color: #fff;
   margin-bottom: 18px;
   flex-shrink: 0;
-  letter-spacing: -0.03em;
+  object-fit: contain;
 }
 
 .sidebar-nav {

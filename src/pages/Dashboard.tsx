@@ -15,6 +15,7 @@ import MemberProfileModal from "../components/MemberProfileModal";
 import Confetti from "../components/Confetti";
 import OnboardingTour from "../components/OnboardingTour";
 import "./Dashboard.css";
+import logoImg from "../assets/logo.png";
 
 interface DashboardProps {
   user: any;
@@ -582,7 +583,7 @@ export default function Dashboard({ user, onSignOut }: DashboardProps) {
 
       {/* ── Slim Sidebar ──────────────────────────────────────── */}
       <div className="sidebar">
-        <div className="sidebar-logo">S</div>
+        <img src={logoImg} className="sidebar-logo" alt="Syncology Logo" />
 
         <nav className="sidebar-nav">
           <NavItem icon={<IconHome />}     label="My Rooms"    active={activeTab === "home"}     onClick={() => setActiveTab("home")} />

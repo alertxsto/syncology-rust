@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./LoginPage.css";
+import logoImg from "../assets/logo.png";
 
 interface LoginPageProps {
   onLogin: (user: any) => void;
@@ -34,7 +35,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   return (
     <div className="login-page">
       <div className="login-card fade-in">
-        <div className="login-logo">S</div>
+        <img src={logoImg} className="login-logo" alt="Syncology Logo" />
         <h1 className="login-title">Syncology</h1>
         <p className="login-sub">
           Platform manajemen tugas tim berbasis akuntabilitas.<br />
