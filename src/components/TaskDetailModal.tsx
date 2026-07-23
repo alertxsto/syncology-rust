@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Task, Member, TaskComment, TaskStatus, TaskSubtask } from "@/types";
 import { cx, formatDate, formatRelative, formatTime, initials, openExternalUrl } from "@/lib/utils";
 import { FiZap } from "react-icons/fi";
+import ImageViewerModal from "./ImageViewerModal";
 import "./TaskDetailModal.css";
 
 interface TaskDetailModalProps {
@@ -54,6 +55,8 @@ export default function TaskDetailModal({
   const [selectedBlockerId, setSelectedBlockerId] = useState("");
   const [savingBlockers, setSavingBlockers] = useState(false);
   const [blockerError, setBlockerError] = useState<string | null>(null);
+  const [viewerImages, setViewerImages] = useState<string[] | null>(null);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const commentListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -412,11 +415,14 @@ export default function TaskDetailModal({
                     <div>
                       <span style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", display: "block", marginBottom: "6px" }}>Screenshot / Gambar Bukti</span>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "8px" }}>
-                        {image_urls.map((img) => (
+                        {image_urls.map((img, idx) => (
                           <button
                             key={img}
                             style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: 0, overflow: "hidden", background: "var(--bg-elevated)", cursor: "pointer" }}
-                            onClick={() => openExternalUrl(img).catch(console.error)}
+                            onClick={() => {
+                              setViewerImages(image_urls);
+                              setViewerIndex(idx);
+                            }}
                             title={img}
                           >
                             <img src={img} alt="Evidence" style={{ width: "100%", height: "96px", objectFit: "cover", display: "block" }} />
@@ -850,6 +856,15 @@ export default function TaskDetailModal({
           <button className="btn-secondary" onClick={onClose}>Tutup</button>
         </div>
       </div>
+
+      {viewerImages && (
+        <ImageViewerModal
+          imageUrls={viewerImages}
+          initialIndex={viewerIndex}
+          onClose={() => setViewerImages(null)}
+          title={`Bukti Foto · ${task.title}`}
+        />
+      )}
     </div>
   );
 }

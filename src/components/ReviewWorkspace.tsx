@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Task, Member } from "@/types";
 import { cx, openExternalUrl } from "@/lib/utils";
 import { FiCheckSquare, FiClock, FiInbox } from "react-icons/fi";
+import ImageViewerModal from "./ImageViewerModal";
 import "./ReviewWorkspace.css";
 
 interface ReviewWorkspaceProps {
@@ -31,6 +32,8 @@ export default function ReviewWorkspace({
   const [showApproveForm, setShowApproveForm] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [err, setErr] = useState("");
+  const [viewerImages, setViewerImages] = useState<string[] | null>(null);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   // SLA Time Helper: Hitung waktu tunggu dalam format jam / hari
   const getSLAInfo = (submittedAtStr?: string) => {
@@ -426,11 +429,14 @@ export default function ReviewWorkspace({
                         <div>
                           <span style={{ fontSize: "10px", color: "var(--text-3)", fontWeight: 700, display: "block", marginBottom: "4px" }}>SCREENSHOT BUKTI</span>
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "8px" }}>
-                            {image_urls.map((img) => (
+                            {image_urls.map((img, idx) => (
                               <button
                                 key={img}
                                 style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: 0, overflow: "hidden", background: "var(--bg-elevated)", cursor: "pointer" }}
-                                onClick={() => openExternalUrl(img).catch(console.error)}
+                                onClick={() => {
+                                  setViewerImages(image_urls);
+                                  setViewerIndex(idx);
+                                }}
                               >
                                 <img src={img} alt="Evidence" style={{ width: "100%", height: "80px", objectFit: "cover", display: "block" }} />
                               </button>
@@ -578,6 +584,14 @@ export default function ReviewWorkspace({
         )}
       </div>
 
+      {viewerImages && (
+        <ImageViewerModal
+          imageUrls={viewerImages}
+          initialIndex={viewerIndex}
+          onClose={() => setViewerImages(null)}
+          title={`Bukti Foto · ${activeTask ? activeTask.title : 'Review'}`}
+        />
+      )}
     </div>
   );
 }
